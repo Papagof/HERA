@@ -6,13 +6,16 @@
 HERA is a fully automated web application for managing the day-to-day administration of a residential estate. It is the single source of truth for residents, landlords, properties, estate finances, executive committee history, and reporting.
 
 ## Status
-All 6 modules have working UIs. Next.js 16 (App Router, TypeScript, Tailwind CSS v4), Supabase project "HERA" (`ixiesjahzyfxtqmxxkbe`, eu-west-1) with full schema + RLS, Supabase Auth (login, session refresh via `proxy.ts`, auto-created `profiles` row per signup), role-aware dashboard with live financial cards.
+All 6 modules have working UIs, plus account/access management and an audit trail. Next.js 16 (App Router, TypeScript, Tailwind CSS v4), Supabase project "HERA" (`ixiesjahzyfxtqmxxkbe`, eu-west-1) with full schema + RLS, Supabase Auth (login, session refresh via `proxy.ts`, auto-created `profiles` row per signup), role-aware dashboard with live financial cards. Git repo at `https://github.com/Papagof/HERA`.
 
 - **Directory, Service Charges, Property Listings, Executives, Income & Expenditure, Reports** — all fully working CRUD, built directly against the schema below.
+- **Account, Users, Audit Log** — password self-service, `super_admin`-only invite/role/remove (needs `SUPABASE_SERVICE_ROLE_KEY`, see README), and a DB-trigger-backed audit trail on every records/financial table.
+- RLS policies wrap `auth.uid()`/`current_user_role()` in `(select ...)` for per-query (not per-row) evaluation; all FKs are indexed; `profiles` policies are one-per-action (no overlapping permissive policies).
 - Photos/documents/receipts use plain URL text fields, not real file upload widgets (no Supabase Storage buckets wired up yet).
 - Monthly report export is an in-app view only — no PDF/Excel generation yet.
 - No payment gateway (Paystack/Flutterwave/Stripe) integration — payments are recorded manually.
 - No automated reminders/notifications (email/SMS) yet.
+- No automated tests or CI yet.
 
 See `README.md` for setup and `AGENTS.md`/`node_modules/next/dist/docs/.../proxy.md` for the Next.js 16 `proxy.ts` (formerly `middleware.ts`) convention. Update this section as the items above get built out.
 

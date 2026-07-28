@@ -17,9 +17,12 @@ See [CLAUDE.md](CLAUDE.md) for the full project spec and [AGENTS.md](AGENTS.md) 
     - `executives/` — Executive Committee Records
     - `income-expenditure/` — income/expenditure entries + running balance
     - `reports/` — monthly report generation/archive
+    - `account/` — change password (any signed-in user)
+    - `users/` — invite/remove accounts, assign roles (`super_admin` only)
+    - `audit-log/` — who created/edited/deleted what, and when (`super_admin`/`executive_current`/`executive_past`)
   - `app/login/` — public login page
   - `app/listings/` — public-facing property listings + inquiry form (no auth)
-- `lib/supabase/` — `client.ts` (browser), `server.ts` (Server Components/Actions), `proxy.ts` (session refresh, used by root `proxy.ts`)
+- `lib/supabase/` — `client.ts` (browser), `server.ts` (Server Components/Actions), `proxy.ts` (session refresh, used by root `proxy.ts`), `admin.ts` (service-role client, `super_admin`-gated Server Actions only)
 - `lib/auth.ts` — `getCurrentProfile()` / `requireProfile()` / `isStaff()`
 - `lib/types/database.ts` — generated Supabase types (regenerate after schema changes)
 - `components/ui/` — shared design system primitives (Button, Card, Input, Select, Textarea, Badge)
@@ -34,7 +37,9 @@ cp .env.local.example .env.local   # fill in NEXT_PUBLIC_SUPABASE_URL / NEXT_PUB
 npm run dev                        # http://localhost:3000
 ```
 
-The Supabase project ("HERA", `eu-west-1`) already has the full schema and RLS policies applied. Sign up a user via the `/login` page's Supabase Auth flow, then promote them to `super_admin` directly in the database (there is no self-service role picker, by design):
+The Supabase project ("HERA", `eu-west-1`) already has the full schema and RLS policies applied. For `/users` (invite/remove accounts) you also need the project's `service_role` secret key (Project Settings → API) as `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` — server-only, never `NEXT_PUBLIC_`, bypasses RLS. Without it, every other page still works; `/users` just shows a clear error instead of inviting/removing.
+
+To bootstrap the very first account (before `/users` exists to invite anyone), sign up via the `/login` page's Supabase Auth flow, then promote directly in the database:
 
 ```sql
 update public.profiles set role = 'super_admin' where id = '<user-id>';
@@ -54,6 +59,16 @@ All 6 modules have working CRUD UIs:
 4. **Executive Committee Records** — current/past committee, tenure dates, handover documents.
 5. **Income & Expenditure Management** — categorized entries, running income/expenditure/balance totals (also feeds the dashboard's financial cards).
 6. **Monthly Reporting** — generates a report per month from Service Charges + Income & Expenditure data, editable summary, publish toggle (published reports are visible to landlords/residents).
+
+Plus account/access management:
+- **Account** (`/account`) — any signed-in user can change their own password.
+- **Users** (`/users`, `super_admin` only) — invite new accounts by email (Supabase Auth sends the invite; passwords are self-set), assign/change roles, remove accounts.
+- **Audit Log** (`/audit-log`, `super_admin`/`executive_current`/`executive_past`) — every insert/update/delete on every records/financial table, with who and when, via a DB-level trigger (`audit_log` table + `log_audit_event()`), so it can't be bypassed by a code path that forgets to log something.
+
+Robustness work done in this pass:
+- Git repo initialized and pushed to `https://github.com/Papagof/HERA`.
+- Fixed a privilege-escalation gap: `executive_current` could previously change any profile's role, including granting `super_admin`. Now only `super_admin` can manage accounts/roles.
+- Added covering indexes for 14 previously-unindexed foreign keys; rewrote RLS policies to wrap `auth.uid()`/`current_user_role()` calls in `(select ...)` so Postgres evaluates them once per query instead of once per row; consolidated `profiles`' overlapping policies.
 
 Known gaps (by design, deferred from this pass):
 - Photos/documents/receipts are plain URL text fields — no real file upload UI or Supabase Storage buckets yet.
