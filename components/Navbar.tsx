@@ -10,6 +10,7 @@ import type { Database } from "@/lib/types/database";
 type Role = Database["public"]["Enums"]["app_role"];
 
 const STAFF_ROLES: Role[] = ["super_admin", "executive_current"];
+const AUDIT_ROLES: Role[] = ["super_admin", "executive_current", "executive_past"];
 
 const NAV_ITEMS: { label: string; href: string; roles?: Role[] }[] = [
   { label: "Dashboard", href: "/dashboard" },
@@ -23,6 +24,7 @@ const NAV_ITEMS: { label: string; href: string; roles?: Role[] }[] = [
     roles: [...STAFF_ROLES, "accountant"],
   },
   { label: "Reports", href: "/reports" },
+  { label: "Audit Log", href: "/audit-log", roles: AUDIT_ROLES },
   { label: "Users", href: "/users", roles: ["super_admin"] },
 ];
 
