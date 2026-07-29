@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireProfile } from "@/lib/auth";
+import { getSiteUrl } from "@/lib/site-url";
 import type { Database } from "@/lib/types/database";
 
 type Role = Database["public"]["Enums"]["app_role"];
@@ -31,9 +32,11 @@ export async function inviteUser(formData: FormData) {
   const fullName = str(formData, "full_name");
   const role = (str(formData, "role") as Role) ?? "resident";
 
+  const siteUrl = await getSiteUrl();
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
     data: { full_name: fullName },
+    redirectTo: `${siteUrl}/invite`,
   });
   if (error) throw new Error(error.message);
 

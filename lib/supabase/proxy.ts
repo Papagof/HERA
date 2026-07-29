@@ -5,8 +5,11 @@ import { NextResponse, type NextRequest } from "next/server";
 const AUTH_PATHS = ["/login"];
 
 // Always public, whether or not the visitor is signed in (marketing/listings
-// pages, plus their inquiry-form submissions).
-const PUBLIC_PATH_PREFIXES = ["/listings"];
+// pages, plus their inquiry-form submissions). /invite must be public too:
+// an invite/recovery link lands here with the session token only in the URL
+// hash fragment, which the server never sees - if this redirected to /login
+// before the browser JS ran, the token would be lost.
+const PUBLIC_PATH_PREFIXES = ["/listings", "/invite"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
