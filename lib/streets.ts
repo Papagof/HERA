@@ -1,0 +1,17 @@
+export const ESTATE_STREETS = [
+  "John Agabri Road",
+  "Peace Close",
+  "Felicia Momoh Close",
+  "Achief Close",
+  "Hallelujah Close",
+  "Favour Honour",
+  "Ariyo Street",
+  "Saluwala Kadiku",
+  "Cedar Street",
+  "Maple Street",
+  "Duro Ekemode",
+  "Samuel Ukpong",
+  "Oladoyin Ishola",
+  "Sawyaolu Close",
+  "Kings Garden",
+] as const;

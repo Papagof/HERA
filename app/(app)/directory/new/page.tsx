@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { labelClass } from "@/components/ui/fieldStyles";
+import { ESTATE_STREETS } from "@/lib/streets";
 
 export default async function NewPropertyPage() {
   const profile = await requireProfile();
@@ -18,7 +19,16 @@ export default async function NewPropertyPage() {
         <form action={createProperty} className="space-y-4">
           <div>
             <label className={labelClass} htmlFor="street_name">Street name</label>
-            <Input id="street_name" name="street_name" required />
+            <Select id="street_name" name="street_name" required defaultValue="">
+              <option value="" disabled>
+                Select a street
+              </option>
+              {ESTATE_STREETS.map((street) => (
+                <option key={street} value={street}>
+                  {street}
+                </option>
+              ))}
+            </Select>
           </div>
           <div>
             <label className={labelClass} htmlFor="house_number">House/unit number</label>

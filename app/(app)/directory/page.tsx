@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { Button, buttonClasses } from "@/components/ui/Button";
+import { ESTATE_STREETS } from "@/lib/streets";
 
 type PropertyRow = {
   id: string;
@@ -92,7 +93,14 @@ export default async function DirectoryPage({
 
       <Card>
         <form className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Input name="street" placeholder="Filter by street" defaultValue={street ?? ""} />
+          <Select name="street" defaultValue={street ?? ""}>
+            <option value="">All streets</option>
+            {ESTATE_STREETS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </Select>
           <Select name="status" defaultValue={status ?? ""}>
             <option value="">All statuses</option>
             <option value="available">Available</option>

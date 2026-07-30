@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { labelClass } from "@/components/ui/fieldStyles";
+import { ESTATE_STREETS } from "@/lib/streets";
 import {
   updateProperty,
   deleteProperty,
@@ -60,7 +61,16 @@ export default async function PropertyDetailPage({
           <form action={updateProperty.bind(null, property.id)} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className={labelClass}>Street name</label>
-              <Input name="street_name" defaultValue={property.street_name} required />
+              <Select name="street_name" defaultValue={property.street_name} required>
+                {!(ESTATE_STREETS as readonly string[]).includes(property.street_name) && (
+                  <option value={property.street_name}>{property.street_name} (current)</option>
+                )}
+                {ESTATE_STREETS.map((street) => (
+                  <option key={street} value={street}>
+                    {street}
+                  </option>
+                ))}
+              </Select>
             </div>
             <div>
               <label className={labelClass}>House/unit number</label>
