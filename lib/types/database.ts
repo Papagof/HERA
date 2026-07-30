@@ -618,6 +618,14 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      estate_public_stats: {
+        Args: never
+        Returns: {
+          active_executives: number
+          available_properties: number
+          resident_count: number
+        }[]
+      }
     }
     Enums: {
       app_role:

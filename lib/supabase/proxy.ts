@@ -9,7 +9,11 @@ const AUTH_PATHS = ["/login"];
 // an invite/recovery link lands here with the session token only in the URL
 // hash fragment, which the server never sees - if this redirected to /login
 // before the browser JS ran, the token would be lost.
-const PUBLIC_PATH_PREFIXES = ["/listings", "/invite"];
+//
+// "/" is matched via the same `pathname === prefix || pathname.startsWith(`${prefix}/`)`
+// check below - for prefix "/" that's `pathname === "/" || pathname.startsWith("//")`,
+// which only ever matches the root path itself, not every route.
+const PUBLIC_PATH_PREFIXES = ["/", "/listings", "/invite"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
