@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClasses } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { labelClass } from "@/components/ui/fieldStyles";
 import { formatCurrency } from "@/lib/currency";
@@ -79,9 +80,14 @@ export default async function PublicListingDetailPage({
           Interested? Send an inquiry
         </h2>
         {sent === "1" ? (
-          <p className="text-emerald-600 dark:text-emerald-400">
-            Thanks — your inquiry has been sent. We&rsquo;ll be in touch.
-          </p>
+          <div className="text-center">
+            <p className="text-emerald-600 dark:text-emerald-400">
+              Thanks — your inquiry has been sent. We&rsquo;ll be in touch.
+            </p>
+            <Link href="/" className={`mt-6 inline-flex ${buttonClasses("secondary")}`}>
+              Back to home
+            </Link>
+          </div>
         ) : (
           <form action={sendInquiry} className="space-y-4">
             <div>
