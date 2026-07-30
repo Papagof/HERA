@@ -68,7 +68,43 @@ export default async function IncomeExpenditurePage({
       </div>
 
       <Card>
-        <div className="mb-4 flex items-center justify-between">
+        <form action={createEntry} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 sm:col-span-2">
+            Add entry
+          </p>
+          <div>
+            <label className={labelClass}>Type</label>
+            <Select name="entry_type" defaultValue="expenditure">
+              <option value="income">Income</option>
+              <option value="expenditure">Expenditure</option>
+            </Select>
+          </div>
+          <div>
+            <label className={labelClass}>Category</label>
+            <Input name="category" placeholder="Security, maintenance, donation..." required />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Description (optional)</label>
+            <Input name="description" />
+          </div>
+          <div>
+            <label className={labelClass}>Amount</label>
+            <Input name="amount" type="number" step="0.01" required />
+          </div>
+          <div>
+            <label className={labelClass}>Date</label>
+            <Input name="entry_date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Receipt URL (optional)</label>
+            <Input name="receipt_url" />
+          </div>
+          <div className="sm:col-span-2">
+            <Button type="submit">Add entry</Button>
+          </div>
+        </form>
+
+        <div className="mt-6 mb-4 flex items-center justify-between border-t border-slate-200 pt-4 dark:border-slate-800">
           <h2 className="text-lg font-medium text-slate-900 dark:text-slate-100">Entries</h2>
           <form className="flex items-center gap-2">
             <Select name="type" defaultValue={type ?? ""}>
@@ -112,42 +148,6 @@ export default async function IncomeExpenditurePage({
             <p className="text-sm text-slate-500 dark:text-slate-400">No entries recorded.</p>
           )}
         </div>
-
-        <form action={createEntry} className="mt-6 grid grid-cols-1 gap-3 border-t border-slate-200 pt-4 dark:border-slate-800 sm:grid-cols-2">
-          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 sm:col-span-2">
-            Add entry
-          </p>
-          <div>
-            <label className={labelClass}>Type</label>
-            <Select name="entry_type" defaultValue="expenditure">
-              <option value="income">Income</option>
-              <option value="expenditure">Expenditure</option>
-            </Select>
-          </div>
-          <div>
-            <label className={labelClass}>Category</label>
-            <Input name="category" placeholder="Security, maintenance, donation..." required />
-          </div>
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Description (optional)</label>
-            <Input name="description" />
-          </div>
-          <div>
-            <label className={labelClass}>Amount</label>
-            <Input name="amount" type="number" step="0.01" required />
-          </div>
-          <div>
-            <label className={labelClass}>Date</label>
-            <Input name="entry_date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
-          </div>
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Receipt URL (optional)</label>
-            <Input name="receipt_url" />
-          </div>
-          <div className="sm:col-span-2">
-            <Button type="submit">Add entry</Button>
-          </div>
-        </form>
       </Card>
     </div>
   );
