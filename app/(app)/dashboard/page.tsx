@@ -17,12 +17,17 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const canSeeFinancials = isStaff(profile.role) || profile.role === "accountant";
 
-  const [{ count: residentCount }, { count: propertyCount }, { count: landlordCount }] =
-    await Promise.all([
-      supabase.from("residents").select("*", { count: "exact", head: true }),
-      supabase.from("properties").select("*", { count: "exact", head: true }),
-      supabase.from("landlords").select("*", { count: "exact", head: true }),
-    ]);
+  // Resident/landlord counts come from estate_public_stats() rather than a
+  // direct table count - the same security-definer source the public
+  // homepage uses. A direct `.from("residents").select(count)` is RLS-scoped
+  // to the viewer's own row for landlord/resident roles, which would show a
+  // misleadingly small number instead of the real estate-wide total.
+  const [{ count: propertyCount }, { data: publicStats }] = await Promise.all([
+    supabase.from("properties").select("*", { count: "exact", head: true }),
+    supabase.rpc("estate_public_stats").single(),
+  ]);
+  const residentCount = publicStats?.resident_count ?? 0;
+  const landlordCount = publicStats?.landlord_count ?? 0;
 
   let outstanding = 0;
   let balance = 0;
@@ -68,9 +73,9 @@ export default async function DashboardPage() {
         </p>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Residents" value={residentCount ?? 0} />
+        <StatCard label="Residents" value={residentCount} />
         <StatCard label="Properties" value={propertyCount ?? 0} />
-        <StatCard label="Landlords" value={landlordCount ?? 0} />
+        <StatCard label="Landlords" value={landlordCount} />
         {canSeeFinancials && (
           <>
             <StatCard label="Outstanding payments" value={formatCurrency(outstanding)} />

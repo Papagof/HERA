@@ -650,6 +650,7 @@ export type Database = {
         Returns: {
           active_executives: number
           available_properties: number
+          landlord_count: number
           resident_count: number
         }[]
       }

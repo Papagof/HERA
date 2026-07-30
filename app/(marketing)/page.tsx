@@ -103,7 +103,10 @@ export default function HomePage() {
       .then(({ data }) => {
         if (!data) return;
         setStats({
-          residentCount: data.resident_count,
+          // Combined for this single "Residents & Landlords" stat card -
+          // the dashboard shows these two as separate cards, both sourced
+          // from this same function so the numbers always agree.
+          residentCount: data.resident_count + data.landlord_count,
           availableProperties: data.available_properties,
           activeExecutives: data.active_executives,
         });
