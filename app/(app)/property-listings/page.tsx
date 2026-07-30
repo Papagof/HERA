@@ -51,6 +51,67 @@ export default async function PropertyListingsAdminPage() {
         </a>
       </div>
 
+      <Card>
+        <form action={createListing} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 sm:col-span-2">
+            Create listing
+          </p>
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Property</label>
+            <Select name="property_id" required defaultValue="">
+              <option value="" disabled>
+                Select a property
+              </option>
+              {properties?.map((property) => (
+                <option key={property.id} value={property.id}>
+                  {property.house_number} {property.street_name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <label className={labelClass}>Listing type</label>
+            <Select name="listing_type" defaultValue="rent">
+              <option value="rent">For rent</option>
+              <option value="sale">For sale</option>
+            </Select>
+          </div>
+          <div>
+            <label className={labelClass}>Price</label>
+            <Input name="price" type="number" step="0.01" />
+          </div>
+          <div>
+            <label className={labelClass}>Size</label>
+            <Input name="size" placeholder="e.g. 3 bedrooms" />
+          </div>
+          <div>
+            <label className={labelClass}>Contact name</label>
+            <Input name="contact_name" />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Description</label>
+            <Input name="description" />
+          </div>
+          <div>
+            <label className={labelClass}>Contact phone</label>
+            <Input name="contact_phone" />
+          </div>
+          <div>
+            <label className={labelClass}>Image URLs (comma-separated)</label>
+            <Input name="image_urls" />
+          </div>
+          <div className="flex items-center gap-2 sm:col-span-2">
+            <input type="checkbox" id="new-publish" name="is_published" />
+            <label htmlFor="new-publish" className="text-sm text-slate-700 dark:text-slate-300">
+              Publish immediately
+            </label>
+          </div>
+          <div className="sm:col-span-2">
+            <Button type="submit">Create listing</Button>
+          </div>
+        </form>
+      </Card>
+
       <div className="space-y-4">
         {((listings ?? []) as unknown as ListingRow[]).map((listing) => (
           <Card key={listing.id}>
@@ -116,67 +177,6 @@ export default async function PropertyListingsAdminPage() {
           <Card className="text-center text-slate-500 dark:text-slate-400">No listings yet.</Card>
         )}
       </div>
-
-      <Card>
-        <form action={createListing} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 sm:col-span-2">
-            Create listing
-          </p>
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Property</label>
-            <Select name="property_id" required defaultValue="">
-              <option value="" disabled>
-                Select a property
-              </option>
-              {properties?.map((property) => (
-                <option key={property.id} value={property.id}>
-                  {property.house_number} {property.street_name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <label className={labelClass}>Listing type</label>
-            <Select name="listing_type" defaultValue="rent">
-              <option value="rent">For rent</option>
-              <option value="sale">For sale</option>
-            </Select>
-          </div>
-          <div>
-            <label className={labelClass}>Price</label>
-            <Input name="price" type="number" step="0.01" />
-          </div>
-          <div>
-            <label className={labelClass}>Size</label>
-            <Input name="size" placeholder="e.g. 3 bedrooms" />
-          </div>
-          <div>
-            <label className={labelClass}>Contact name</label>
-            <Input name="contact_name" />
-          </div>
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Description</label>
-            <Input name="description" />
-          </div>
-          <div>
-            <label className={labelClass}>Contact phone</label>
-            <Input name="contact_phone" />
-          </div>
-          <div>
-            <label className={labelClass}>Image URLs (comma-separated)</label>
-            <Input name="image_urls" />
-          </div>
-          <div className="flex items-center gap-2 sm:col-span-2">
-            <input type="checkbox" id="new-publish" name="is_published" />
-            <label htmlFor="new-publish" className="text-sm text-slate-700 dark:text-slate-300">
-              Publish immediately
-            </label>
-          </div>
-          <div className="sm:col-span-2">
-            <Button type="submit">Create listing</Button>
-          </div>
-        </form>
-      </Card>
     </div>
   );
 }
