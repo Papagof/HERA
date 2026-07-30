@@ -13,7 +13,7 @@ const AUTH_PATHS = ["/login"];
 // "/" is matched via the same `pathname === prefix || pathname.startsWith(`${prefix}/`)`
 // check below - for prefix "/" that's `pathname === "/" || pathname.startsWith("//")`,
 // which only ever matches the root path itself, not every route.
-const PUBLIC_PATH_PREFIXES = ["/", "/listings", "/invite"];
+const PUBLIC_PATH_PREFIXES = ["/", "/listings", "/invite", "/about", "/contact"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
