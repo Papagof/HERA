@@ -29,20 +29,6 @@ export default async function ExecutivesPage() {
         Executive Committee Records
       </h1>
 
-      <Card>
-        <h2 className="mb-4 text-lg font-medium text-slate-900 dark:text-slate-100">
-          Current committee
-        </h2>
-        <ExecutiveList executives={current} canEdit={canEdit} />
-      </Card>
-
-      <Card>
-        <h2 className="mb-4 text-lg font-medium text-slate-900 dark:text-slate-100">
-          Past executives
-        </h2>
-        <ExecutiveList executives={past} canEdit={canEdit} />
-      </Card>
-
       {canEdit && (
         <Card>
           <form action={createExecutive} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -102,6 +88,20 @@ export default async function ExecutivesPage() {
           </form>
         </Card>
       )}
+
+      <Card>
+        <h2 className="mb-4 text-lg font-medium text-slate-900 dark:text-slate-100">
+          Current committee
+        </h2>
+        <ExecutiveList executives={current} canEdit={canEdit} />
+      </Card>
+
+      <Card>
+        <h2 className="mb-4 text-lg font-medium text-slate-900 dark:text-slate-100">
+          Past executives
+        </h2>
+        <ExecutiveList executives={past} canEdit={canEdit} />
+      </Card>
     </div>
   );
 }
