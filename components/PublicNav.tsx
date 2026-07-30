@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { cx } from "@/lib/cx";
 
 const NAV_ITEMS = [
@@ -41,6 +42,7 @@ export function PublicNav() {
           >
             Sign In
           </Link>
+          <ThemeToggle />
         </nav>
       </div>
     </header>

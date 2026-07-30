@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { buttonClasses } from "@/components/ui/Button";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { cx } from "@/lib/cx";
 import type { Database } from "@/lib/types/database";
 
@@ -60,6 +61,7 @@ export function Navbar({ fullName, role }: { fullName: string | null; role: Role
           ))}
         </div>
         <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+          <ThemeToggle />
           <Link href="/account" className="hover:text-slate-900 dark:hover:text-slate-100">
             {fullName ?? "Unnamed"} <span className="text-xs">({role})</span>
           </Link>
