@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { labelClass } from "@/components/ui/fieldStyles";
+import { formatCurrency } from "@/lib/currency";
 import { createStructure, deleteStructure, generateInvoices, recordPayment } from "./actions";
 
 type InvoiceRow = {
@@ -69,7 +70,7 @@ export default async function ServiceChargesPage({
               <div>
                 <p className="font-medium text-slate-900 dark:text-slate-100">{structure.name}</p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {structure.amount} · {structure.frequency}
+                  {formatCurrency(structure.amount)} · {structure.frequency}
                   {structure.applies_to_property_type ? ` · ${structure.applies_to_property_type}` : ""}
                 </p>
               </div>
@@ -159,7 +160,7 @@ export default async function ServiceChargesPage({
                     : "Unknown property"}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {invoice.service_charge_structures?.name ?? "—"} · {invoice.amount} · due{" "}
+                  {invoice.service_charge_structures?.name ?? "—"} · {formatCurrency(invoice.amount)} · due{" "}
                   {invoice.due_date}
                 </p>
               </div>

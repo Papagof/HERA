@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { labelClass } from "@/components/ui/fieldStyles";
+import { formatCurrency } from "@/lib/currency";
 import { generateReport, updateReport, deleteReport } from "./actions";
 
 export default async function ReportsPage() {
@@ -59,19 +60,19 @@ export default async function ReportsPage() {
             <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               <div>
                 <dt className="text-slate-500 dark:text-slate-400">Collected</dt>
-                <dd className="font-medium text-slate-900 dark:text-slate-100">{report.total_collected}</dd>
+                <dd className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(report.total_collected)}</dd>
               </div>
               <div>
                 <dt className="text-slate-500 dark:text-slate-400">Outstanding</dt>
-                <dd className="font-medium text-slate-900 dark:text-slate-100">{report.total_outstanding}</dd>
+                <dd className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(report.total_outstanding)}</dd>
               </div>
               <div>
                 <dt className="text-slate-500 dark:text-slate-400">Income</dt>
-                <dd className="font-medium text-emerald-600 dark:text-emerald-400">{report.total_income}</dd>
+                <dd className="font-medium text-emerald-600 dark:text-emerald-400">{formatCurrency(report.total_income)}</dd>
               </div>
               <div>
                 <dt className="text-slate-500 dark:text-slate-400">Expenditure</dt>
-                <dd className="font-medium text-red-600 dark:text-red-400">{report.total_expenditure}</dd>
+                <dd className="font-medium text-red-600 dark:text-red-400">{formatCurrency(report.total_expenditure)}</dd>
               </div>
             </dl>
 

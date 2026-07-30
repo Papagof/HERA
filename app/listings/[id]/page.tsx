@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { labelClass } from "@/components/ui/fieldStyles";
+import { formatCurrency } from "@/lib/currency";
 import { submitInquiry } from "../actions";
 
 export default async function PublicListingDetailPage({
@@ -48,7 +49,7 @@ export default async function PublicListingDetailPage({
         </div>
         {listing.price && (
           <p className="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">
-            {listing.price}
+            {formatCurrency(listing.price)}
           </p>
         )}
         {listing.size && <p className="text-slate-500 dark:text-slate-400">{listing.size}</p>}

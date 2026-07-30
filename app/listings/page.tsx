@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { formatCurrency } from "@/lib/currency";
 
 type ListingRow = {
   id: string;
@@ -44,7 +45,7 @@ export default async function PublicListingsPage() {
               </div>
               {listing.price && (
                 <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
-                  {listing.price}
+                  {formatCurrency(listing.price)}
                 </p>
               )}
               {listing.size && (

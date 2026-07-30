@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { Card } from "@/components/ui/Card";
+import { formatCurrency } from "@/lib/currency";
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
@@ -72,8 +73,8 @@ export default async function DashboardPage() {
         <StatCard label="Landlords" value={landlordCount ?? 0} />
         {canSeeFinancials && (
           <>
-            <StatCard label="Outstanding payments" value={outstanding.toFixed(2)} />
-            <StatCard label="Current balance" value={balance.toFixed(2)} />
+            <StatCard label="Outstanding payments" value={formatCurrency(outstanding)} />
+            <StatCard label="Current balance" value={formatCurrency(balance)} />
           </>
         )}
       </div>

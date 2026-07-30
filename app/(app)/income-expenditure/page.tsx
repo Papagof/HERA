@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { labelClass } from "@/components/ui/fieldStyles";
+import { formatCurrency } from "@/lib/currency";
 import { createEntry, deleteEntry } from "./actions";
 
 export default async function IncomeExpenditurePage({
@@ -49,19 +50,19 @@ export default async function IncomeExpenditurePage({
         <Card>
           <p className="text-sm text-slate-500 dark:text-slate-400">Total income</p>
           <p className="mt-1 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
-            {totalIncome.toFixed(2)}
+            {formatCurrency(totalIncome)}
           </p>
         </Card>
         <Card>
           <p className="text-sm text-slate-500 dark:text-slate-400">Total expenditure</p>
           <p className="mt-1 text-2xl font-semibold text-red-600 dark:text-red-400">
-            {totalExpenditure.toFixed(2)}
+            {formatCurrency(totalExpenditure)}
           </p>
         </Card>
         <Card>
           <p className="text-sm text-slate-500 dark:text-slate-400">Net balance</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">
-            {(totalIncome - totalExpenditure).toFixed(2)}
+            {formatCurrency(totalIncome - totalExpenditure)}
           </p>
         </Card>
       </div>
@@ -97,7 +98,7 @@ export default async function IncomeExpenditurePage({
               <div className="flex items-center gap-3">
                 <Badge tone={entry.entry_type === "income" ? "green" : "red"}>
                   {entry.entry_type === "income" ? "+" : "-"}
-                  {entry.amount}
+                  {formatCurrency(entry.amount)}
                 </Badge>
                 <form action={deleteEntry.bind(null, entry.id)}>
                   <Button type="submit" variant="danger">
