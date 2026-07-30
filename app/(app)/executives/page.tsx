@@ -2,9 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { labelClass } from "@/components/ui/fieldStyles";
+import { EXECUTIVE_POSITIONS } from "@/lib/executive-positions";
 import { createExecutive, updateExecutive, deleteExecutive } from "./actions";
 
 export default async function ExecutivesPage() {
@@ -53,7 +55,16 @@ export default async function ExecutivesPage() {
             </div>
             <div>
               <label className={labelClass}>Position</label>
-              <Input name="position" placeholder="Chairman, Secretary, Treasurer..." required />
+              <Select name="position" required defaultValue="">
+                <option value="" disabled>
+                  Select a position
+                </option>
+                {EXECUTIVE_POSITIONS.map((position) => (
+                  <option key={position} value={position}>
+                    {position}
+                  </option>
+                ))}
+              </Select>
             </div>
             <div>
               <label className={labelClass}>Phone</label>
@@ -123,7 +134,16 @@ function ExecutiveList({ executives, canEdit }: { executives: Executive[]; canEd
             className="grid grid-cols-1 gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-800 sm:grid-cols-2"
           >
             <Input name="full_name" defaultValue={executive.full_name} required />
-            <Input name="position" defaultValue={executive.position} required />
+            <Select name="position" defaultValue={executive.position} required>
+              {!(EXECUTIVE_POSITIONS as readonly string[]).includes(executive.position) && (
+                <option value={executive.position}>{executive.position} (current)</option>
+              )}
+              {EXECUTIVE_POSITIONS.map((position) => (
+                <option key={position} value={position}>
+                  {position}
+                </option>
+              ))}
+            </Select>
             <Input name="phone" defaultValue={executive.phone ?? ""} placeholder="Phone" />
             <Input name="photo_url" defaultValue={executive.photo_url ?? ""} placeholder="Photo URL" />
             <Input name="tenure_start" type="date" defaultValue={executive.tenure_start} required />
