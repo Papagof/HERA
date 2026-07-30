@@ -122,7 +122,7 @@ export default function HomePage() {
             <div>
               <Reveal>
                 <span className="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold tracking-wide text-indigo-700 uppercase dark:bg-indigo-500/10 dark:text-indigo-300">
-                  Oko-Ado &middot; Lekki-Epe Expressway, Lagos
+                  Happyland Estate &middot; Oko-Ado &middot; Lekki-Epe Expressway, Lagos
                 </span>
               </Reveal>
               <Reveal delay={100}>
