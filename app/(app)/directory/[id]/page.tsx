@@ -141,6 +141,10 @@ export default async function PropertyDetailPage({
               <Input name="email" type="email" defaultValue={landlord?.email ?? ""} />
             </div>
             <div>
+              <label className={labelClass}>WhatsApp number</label>
+              <Input name="whatsapp_number" defaultValue={landlord?.whatsapp_number ?? ""} />
+            </div>
+            <div>
               <label className={labelClass}>ID document URL</label>
               <Input name="id_document_url" defaultValue={landlord?.id_document_url ?? ""} />
             </div>
@@ -148,7 +152,7 @@ export default async function PropertyDetailPage({
               <label className={labelClass}>Ownership proof URL</label>
               <Input name="ownership_proof_url" defaultValue={landlord?.ownership_proof_url ?? ""} />
             </div>
-            <div className="flex gap-2 sm:col-span-2">
+            <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
               <Button type="submit">{landlord ? "Save landlord" : "Add landlord"}</Button>
               {landlord && (
                 <Button
@@ -158,6 +162,19 @@ export default async function PropertyDetailPage({
                 >
                   Remove landlord
                 </Button>
+              )}
+              {landlord?.whatsapp_number && groupInviteUrl && (
+                <a
+                  href={buildWhatsAppLink(
+                    landlord.whatsapp_number,
+                    `Hi ${landlord.full_name}, here's the invite link to our estate WhatsApp group: ${groupInviteUrl}`
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-emerald-600 hover:underline dark:text-emerald-400"
+                >
+                  Invite to WhatsApp group →
+                </a>
               )}
             </div>
           </form>

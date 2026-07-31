@@ -75,6 +75,7 @@ export async function upsertLandlord(
     full_name: str(formData, "full_name")!,
     phone: str(formData, "phone"),
     email: str(formData, "email"),
+    whatsapp_number: str(formData, "whatsapp_number"),
     id_document_url: str(formData, "id_document_url"),
     ownership_proof_url: str(formData, "ownership_proof_url"),
   };
