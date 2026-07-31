@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { labelClass } from "@/components/ui/fieldStyles";
 import { ESTATE_STREETS } from "@/lib/streets";
+import { buildWhatsAppLink } from "@/lib/whatsapp";
 import {
   updateProperty,
   deleteProperty,
@@ -34,15 +35,17 @@ export default async function PropertyDetailPage({
   const { data: property } = await supabase.from("properties").select("*").eq("id", id).single();
   if (!property) notFound();
 
-  const [{ data: landlords }, { data: residents }, { data: history }] = await Promise.all([
+  const [{ data: landlords }, { data: residents }, { data: history }, { data: estateWideGroup }] = await Promise.all([
     supabase.from("landlords").select("*").eq("property_id", id),
     supabase.from("residents").select("*").eq("property_id", id).order("full_name"),
     canSeeHistory
       ? supabase.from("occupancy_history").select("*").eq("property_id", id).order("end_date", { ascending: false })
       : Promise.resolve({ data: [] as never[] }),
+    supabase.from("community_groups").select("invite_url").eq("key", "estate_wide").maybeSingle(),
   ]);
 
   const landlord = landlords?.[0] ?? null;
+  const groupInviteUrl = estateWideGroup?.invite_url ?? null;
 
   return (
     <div className="space-y-6">
@@ -181,13 +184,18 @@ export default async function PropertyDetailPage({
                   <Input name="full_name" defaultValue={resident.full_name} required />
                   <Input name="phone" defaultValue={resident.phone ?? ""} placeholder="Phone" />
                   <Input name="email" type="email" defaultValue={resident.email ?? ""} placeholder="Email" />
+                  <Input
+                    name="whatsapp_number"
+                    defaultValue={resident.whatsapp_number ?? ""}
+                    placeholder="WhatsApp number"
+                  />
                   <Select name="relationship" defaultValue={resident.relationship}>
                     <option value="owner-occupier">Owner-occupier</option>
                     <option value="tenant">Tenant</option>
                     <option value="family">Family</option>
                   </Select>
                   <Input name="move_in_date" type="date" defaultValue={resident.move_in_date ?? ""} />
-                  <div className="flex gap-2 sm:col-span-2">
+                  <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
                     <Button type="submit">Save</Button>
                     <Button
                       type="submit"
@@ -196,6 +204,19 @@ export default async function PropertyDetailPage({
                     >
                       Move out
                     </Button>
+                    {resident.whatsapp_number && groupInviteUrl && (
+                      <a
+                        href={buildWhatsAppLink(
+                          resident.whatsapp_number,
+                          `Hi ${resident.full_name}, here's the invite link to our estate WhatsApp group: ${groupInviteUrl}`
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-emerald-600 hover:underline dark:text-emerald-400"
+                      >
+                        Invite to WhatsApp group →
+                      </a>
+                    )}
                   </div>
                 </form>
               ) : (
@@ -219,6 +240,7 @@ export default async function PropertyDetailPage({
             <Input name="full_name" placeholder="Full name" required />
             <Input name="phone" placeholder="Phone" />
             <Input name="email" type="email" placeholder="Email" />
+            <Input name="whatsapp_number" placeholder="WhatsApp number" />
             <Select name="relationship" defaultValue="tenant">
               <option value="owner-occupier">Owner-occupier</option>
               <option value="tenant">Tenant</option>

@@ -104,6 +104,7 @@ export async function createResident(propertyId: string, formData: FormData) {
     full_name: str(formData, "full_name")!,
     phone: str(formData, "phone"),
     email: str(formData, "email"),
+    whatsapp_number: str(formData, "whatsapp_number"),
     relationship: (str(formData, "relationship") as Relationship) ?? "tenant",
     move_in_date: str(formData, "move_in_date"),
   });
@@ -126,6 +127,7 @@ export async function updateResident(
       full_name: str(formData, "full_name")!,
       phone: str(formData, "phone"),
       email: str(formData, "email"),
+      whatsapp_number: str(formData, "whatsapp_number"),
       relationship: (str(formData, "relationship") as Relationship) ?? "tenant",
       move_in_date: str(formData, "move_in_date"),
     })

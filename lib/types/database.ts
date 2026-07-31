@@ -585,6 +585,7 @@ export type Database = {
           profile_id: string | null
           property_id: string
           relationship: Database["public"]["Enums"]["resident_relationship"]
+          whatsapp_number: string | null
         }
         Insert: {
           created_at?: string
@@ -597,6 +598,7 @@ export type Database = {
           profile_id?: string | null
           property_id: string
           relationship?: Database["public"]["Enums"]["resident_relationship"]
+          whatsapp_number?: string | null
         }
         Update: {
           created_at?: string
@@ -609,6 +611,7 @@ export type Database = {
           profile_id?: string | null
           property_id?: string
           relationship?: Database["public"]["Enums"]["resident_relationship"]
+          whatsapp_number?: string | null
         }
         Relationships: [
           {
