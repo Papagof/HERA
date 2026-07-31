@@ -192,7 +192,9 @@ export default async function PropertyDetailPage({
 
       {/* Residents */}
       <Card>
-        <h2 className="mb-4 text-lg font-medium text-slate-900 dark:text-slate-100">Residents</h2>
+        <h2 className="mb-4 text-lg font-medium text-slate-900 dark:text-slate-100">
+          Residents ({property.resident_count})
+        </h2>
         <div className="space-y-4">
           {residents?.map((resident) => (
             <div key={resident.id} className="rounded-md border border-slate-200 p-4 dark:border-slate-800">

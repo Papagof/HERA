@@ -16,6 +16,7 @@ type PropertyRow = {
   block: string | null;
   type: string;
   status: string;
+  resident_count: number;
   landlords: { full_name: string }[];
   residents: { full_name: string }[];
 };
@@ -56,7 +57,7 @@ export default async function DirectoryPage({
 
   const { data: properties, error } = await supabase
     .from("properties")
-    .select("id, street_name, house_number, block, type, status, landlords(full_name), residents(full_name)")
+    .select("id, street_name, house_number, block, type, status, resident_count, landlords(full_name), residents(full_name)")
     .order("street_name")
     .order("house_number");
 
@@ -132,7 +133,7 @@ export default async function DirectoryPage({
                   </p>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
                     Landlord: {property.landlords.map((l) => l.full_name).join(", ") || "—"} ·
-                    {" "}Residents: {property.residents.map((r) => r.full_name).join(", ") || "—"}
+                    {" "}Residents ({property.resident_count}): {property.residents.map((r) => r.full_name).join(", ") || "—"}
                   </p>
                 </div>
                 <Badge tone={property.status === "available" ? "green" : "slate"}>

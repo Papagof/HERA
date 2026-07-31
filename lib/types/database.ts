@@ -502,6 +502,7 @@ export type Database = {
           created_at: string
           house_number: string
           id: string
+          resident_count: number
           status: string
           street_name: string
           type: Database["public"]["Enums"]["property_type"]
@@ -511,6 +512,7 @@ export type Database = {
           created_at?: string
           house_number: string
           id?: string
+          resident_count?: number
           status?: string
           street_name: string
           type?: Database["public"]["Enums"]["property_type"]
@@ -520,6 +522,7 @@ export type Database = {
           created_at?: string
           house_number?: string
           id?: string
+          resident_count?: number
           status?: string
           street_name?: string
           type?: Database["public"]["Enums"]["property_type"]
