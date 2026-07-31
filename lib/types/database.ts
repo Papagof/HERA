@@ -55,6 +55,30 @@ export type Database = {
           },
         ]
       }
+      community_groups: {
+        Row: {
+          created_at: string
+          id: string
+          invite_url: string | null
+          key: string
+          label: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invite_url?: string | null
+          key: string
+          label: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invite_url?: string | null
+          key?: string
+          label?: string
+        }
+        Relationships: []
+      }
       contact_messages: {
         Row: {
           created_at: string

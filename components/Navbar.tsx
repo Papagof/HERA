@@ -19,6 +19,7 @@ const NAV_ITEMS: { label: string; href: string; roles?: Role[] }[] = [
   { label: "Service Charges", href: "/service-charges", roles: [...STAFF_ROLES, "accountant"] },
   { label: "Listings", href: "/property-listings", roles: STAFF_ROLES },
   { label: "Executives", href: "/executives" },
+  { label: "Community", href: "/community" },
   {
     label: "Income & Expenditure",
     href: "/income-expenditure",
