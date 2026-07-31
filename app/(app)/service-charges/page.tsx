@@ -16,6 +16,7 @@ type InvoiceRow = {
   amount: number;
   due_date: string;
   status: string;
+  resident_name: string | null;
   properties: { street_name: string; house_number: string } | null;
   service_charge_structures: { name: string } | null;
 };
@@ -42,7 +43,7 @@ export default async function ServiceChargesPage({
     supabase.from("service_charge_structures").select("*").order("name"),
     supabase
       .from("invoices")
-      .select("id, amount, due_date, status, properties(street_name, house_number), service_charge_structures(name)")
+      .select("id, amount, due_date, status, resident_name, properties(street_name, house_number), service_charge_structures(name)")
       .order("due_date", { ascending: false }),
   ]);
 
@@ -168,11 +169,13 @@ export default async function ServiceChargesPage({
             >
               <div>
                 <p className="font-medium text-slate-900 dark:text-slate-100">
+                  {invoice.resident_name ?? "Unknown resident"}
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   {invoice.properties
                     ? `${invoice.properties.house_number} ${invoice.properties.street_name}`
                     : "Unknown property"}
-                </p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {" · "}
                   {invoice.service_charge_structures?.name ?? "—"} · {formatCurrency(invoice.amount)} · due{" "}
                   {invoice.due_date}
                 </p>

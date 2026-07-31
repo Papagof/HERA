@@ -36,8 +36,9 @@ export async function deleteStructure(structureId: string) {
   revalidatePath("/service-charges");
 }
 
-// Creates one unpaid invoice per property for this structure/due date,
-// skipping properties that already have an invoice for that pair.
+// Creates one unpaid invoice per resident (not per property - a unit with
+// three residents gets three invoices) for this structure/due date, skipping
+// residents who already have an invoice for that pair.
 export async function generateInvoices(structureId: string, formData: FormData) {
   const supabase = await createClient();
   const dueDate = str(formData, "due_date")!;
@@ -59,18 +60,32 @@ export async function generateInvoices(structureId: string, formData: FormData) 
   const { data: properties, error: propertiesError } = await propertyQuery;
   if (propertiesError) throw new Error(propertiesError.message);
 
+  const propertyIds = (properties ?? []).map((property) => property.id);
+  if (propertyIds.length === 0) {
+    revalidatePath("/service-charges");
+    return;
+  }
+
+  const { data: residents, error: residentsError } = await supabase
+    .from("residents")
+    .select("id, full_name, property_id")
+    .in("property_id", propertyIds);
+  if (residentsError) throw new Error(residentsError.message);
+
   const { data: existing, error: existingError } = await supabase
     .from("invoices")
-    .select("property_id")
+    .select("resident_id")
     .eq("structure_id", structureId)
     .eq("due_date", dueDate);
   if (existingError) throw new Error(existingError.message);
 
-  const alreadyInvoiced = new Set((existing ?? []).map((row) => row.property_id));
-  const toInsert = (properties ?? [])
-    .filter((property) => !alreadyInvoiced.has(property.id))
-    .map((property) => ({
-      property_id: property.id,
+  const alreadyInvoiced = new Set((existing ?? []).map((row) => row.resident_id));
+  const toInsert = (residents ?? [])
+    .filter((resident) => !alreadyInvoiced.has(resident.id))
+    .map((resident) => ({
+      property_id: resident.property_id,
+      resident_id: resident.id,
+      resident_name: resident.full_name,
       structure_id: structureId,
       amount: structure.amount,
       due_date: dueDate,
@@ -100,6 +115,8 @@ export async function recordPayment(invoiceId: string, formData: FormData) {
   const { error: paymentError } = await supabase.from("payments").insert({
     invoice_id: invoiceId,
     property_id: invoice.property_id,
+    resident_id: invoice.resident_id,
+    resident_name: invoice.resident_name,
     amount,
     method: str(formData, "method") ?? "bank_transfer",
     reference: str(formData, "reference"),

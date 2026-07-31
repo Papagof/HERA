@@ -210,6 +210,8 @@ export type Database = {
           due_date: string
           id: string
           property_id: string
+          resident_id: string | null
+          resident_name: string | null
           status: string
           structure_id: string | null
         }
@@ -219,6 +221,8 @@ export type Database = {
           due_date: string
           id?: string
           property_id: string
+          resident_id?: string | null
+          resident_name?: string | null
           status?: string
           structure_id?: string | null
         }
@@ -228,6 +232,8 @@ export type Database = {
           due_date?: string
           id?: string
           property_id?: string
+          resident_id?: string | null
+          resident_name?: string | null
           status?: string
           structure_id?: string | null
         }
@@ -237,6 +243,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
             referencedColumns: ["id"]
           },
           {
@@ -436,6 +449,8 @@ export type Database = {
           paid_at: string
           property_id: string | null
           reference: string | null
+          resident_id: string | null
+          resident_name: string | null
         }
         Insert: {
           amount: number
@@ -445,6 +460,8 @@ export type Database = {
           paid_at?: string
           property_id?: string | null
           reference?: string | null
+          resident_id?: string | null
+          resident_name?: string | null
         }
         Update: {
           amount?: number
@@ -454,6 +471,8 @@ export type Database = {
           paid_at?: string
           property_id?: string | null
           reference?: string | null
+          resident_id?: string | null
+          resident_name?: string | null
         }
         Relationships: [
           {
@@ -468,6 +487,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "residents"
             referencedColumns: ["id"]
           },
         ]
