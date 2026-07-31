@@ -2,13 +2,12 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { labelClass } from "@/components/ui/fieldStyles";
 import { formatCurrency } from "@/lib/currency";
 import { createEntry, deleteEntry } from "./actions";
+import { AddEntryForm } from "./AddEntryForm";
 
 export default async function IncomeExpenditurePage({
   searchParams,
@@ -68,41 +67,7 @@ export default async function IncomeExpenditurePage({
       </div>
 
       <Card>
-        <form action={createEntry} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 sm:col-span-2">
-            Add entry
-          </p>
-          <div>
-            <label className={labelClass}>Type</label>
-            <Select name="entry_type" defaultValue="expenditure">
-              <option value="income">Income</option>
-              <option value="expenditure">Expenditure</option>
-            </Select>
-          </div>
-          <div>
-            <label className={labelClass}>Category</label>
-            <Input name="category" placeholder="Security, maintenance, donation..." required />
-          </div>
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Description (optional)</label>
-            <Input name="description" />
-          </div>
-          <div>
-            <label className={labelClass}>Amount</label>
-            <Input name="amount" type="number" step="0.01" required />
-          </div>
-          <div>
-            <label className={labelClass}>Date</label>
-            <Input name="entry_date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
-          </div>
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Receipt URL (optional)</label>
-            <Input name="receipt_url" />
-          </div>
-          <div className="sm:col-span-2">
-            <Button type="submit">Add entry</Button>
-          </div>
-        </form>
+        <AddEntryForm action={createEntry} />
 
         <div className="mt-6 mb-4 flex items-center justify-between border-t border-slate-200 pt-4 dark:border-slate-800">
           <h2 className="text-lg font-medium text-slate-900 dark:text-slate-100">Entries</h2>
