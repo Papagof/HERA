@@ -24,6 +24,7 @@ export async function createProperty(formData: FormData) {
       block: str(formData, "block"),
       type: (str(formData, "type") as PropertyType) ?? "occupied",
       status: str(formData, "status") ?? "available",
+      apartment_type: str(formData, "apartment_type"),
     })
     .select("id")
     .single();
@@ -45,6 +46,7 @@ export async function updateProperty(propertyId: string, formData: FormData) {
       block: str(formData, "block"),
       type: (str(formData, "type") as PropertyType) ?? "occupied",
       status: str(formData, "status") ?? "available",
+      apartment_type: str(formData, "apartment_type"),
     })
     .eq("id", propertyId);
 

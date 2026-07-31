@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { labelClass } from "@/components/ui/fieldStyles";
 import { ESTATE_STREETS } from "@/lib/streets";
+import { APARTMENT_TYPES } from "@/lib/apartment-types";
 
 export default async function NewPropertyPage() {
   const profile = await requireProfile();
@@ -37,6 +38,19 @@ export default async function NewPropertyPage() {
           <div>
             <label className={labelClass} htmlFor="block">Block (optional)</label>
             <Input id="block" name="block" />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="apartment_type">Apartment type</label>
+            <Select id="apartment_type" name="apartment_type" required defaultValue="">
+              <option value="" disabled>
+                Select an apartment type
+              </option>
+              {APARTMENT_TYPES.map((apartmentType) => (
+                <option key={apartmentType} value={apartmentType}>
+                  {apartmentType}
+                </option>
+              ))}
+            </Select>
           </div>
           <div>
             <label className={labelClass} htmlFor="type">Type</label>

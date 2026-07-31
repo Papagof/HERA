@@ -498,6 +498,7 @@ export type Database = {
       }
       properties: {
         Row: {
+          apartment_type: string | null
           block: string | null
           created_at: string
           house_number: string
@@ -508,6 +509,7 @@ export type Database = {
           type: Database["public"]["Enums"]["property_type"]
         }
         Insert: {
+          apartment_type?: string | null
           block?: string | null
           created_at?: string
           house_number: string
@@ -518,6 +520,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["property_type"]
         }
         Update: {
+          apartment_type?: string | null
           block?: string | null
           created_at?: string
           house_number?: string
@@ -639,6 +642,7 @@ export type Database = {
       service_charge_structures: {
         Row: {
           amount: number
+          applies_to_apartment_type: string | null
           applies_to_property_type:
             | Database["public"]["Enums"]["property_type"]
             | null
@@ -649,6 +653,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          applies_to_apartment_type?: string | null
           applies_to_property_type?:
             | Database["public"]["Enums"]["property_type"]
             | null
@@ -659,6 +664,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          applies_to_apartment_type?: string | null
           applies_to_property_type?:
             | Database["public"]["Enums"]["property_type"]
             | null

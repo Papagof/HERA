@@ -19,6 +19,7 @@ export async function createStructure(formData: FormData) {
     amount: Number(str(formData, "amount")),
     frequency: str(formData, "frequency") ?? "monthly",
     applies_to_property_type: (str(formData, "applies_to_property_type") as PropertyType) ?? null,
+    applies_to_apartment_type: str(formData, "applies_to_apartment_type"),
   });
 
   if (error) throw new Error(error.message);
@@ -51,6 +52,9 @@ export async function generateInvoices(structureId: string, formData: FormData) 
   let propertyQuery = supabase.from("properties").select("id");
   if (structure.applies_to_property_type) {
     propertyQuery = propertyQuery.eq("type", structure.applies_to_property_type);
+  }
+  if (structure.applies_to_apartment_type) {
+    propertyQuery = propertyQuery.eq("apartment_type", structure.applies_to_apartment_type);
   }
   const { data: properties, error: propertiesError } = await propertyQuery;
   if (propertiesError) throw new Error(propertiesError.message);

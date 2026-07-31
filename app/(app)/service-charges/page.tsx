@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { labelClass } from "@/components/ui/fieldStyles";
 import { formatCurrency } from "@/lib/currency";
+import { APARTMENT_TYPES } from "@/lib/apartment-types";
 import { createStructure, deleteStructure, generateInvoices, recordPayment } from "./actions";
 
 type InvoiceRow = {
@@ -71,6 +72,7 @@ export default async function ServiceChargesPage({
                 <p className="font-medium text-slate-900 dark:text-slate-100">{structure.name}</p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {formatCurrency(structure.amount)} · {structure.frequency}
+                  {structure.applies_to_apartment_type ? ` · ${structure.applies_to_apartment_type}` : ""}
                   {structure.applies_to_property_type ? ` · ${structure.applies_to_property_type}` : ""}
                 </p>
               </div>
@@ -112,6 +114,17 @@ export default async function ServiceChargesPage({
               <option value="monthly">Monthly</option>
               <option value="quarterly">Quarterly</option>
               <option value="annually">Annually</option>
+            </Select>
+          </div>
+          <div>
+            <label className={labelClass}>Applies to apartment type (optional)</label>
+            <Select name="applies_to_apartment_type" defaultValue="">
+              <option value="">All apartment types</option>
+              {APARTMENT_TYPES.map((apartmentType) => (
+                <option key={apartmentType} value={apartmentType}>
+                  {apartmentType}
+                </option>
+              ))}
             </Select>
           </div>
           <div>

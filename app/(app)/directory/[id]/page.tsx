@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { labelClass } from "@/components/ui/fieldStyles";
 import { ESTATE_STREETS } from "@/lib/streets";
+import { APARTMENT_TYPES } from "@/lib/apartment-types";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import {
   updateProperty,
@@ -84,6 +85,21 @@ export default async function PropertyDetailPage({
               <Input name="block" defaultValue={property.block ?? ""} />
             </div>
             <div>
+              <label className={labelClass}>Apartment type</label>
+              <Select name="apartment_type" defaultValue={property.apartment_type ?? ""} required>
+                {!property.apartment_type && (
+                  <option value="" disabled>
+                    Select an apartment type
+                  </option>
+                )}
+                {APARTMENT_TYPES.map((apartmentType) => (
+                  <option key={apartmentType} value={apartmentType}>
+                    {apartmentType}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
               <label className={labelClass}>Type</label>
               <Select name="type" defaultValue={property.type}>
                 <option value="occupied">Occupied</option>
@@ -114,6 +130,8 @@ export default async function PropertyDetailPage({
           </form>
         ) : (
           <dl className="grid grid-cols-2 gap-2 text-sm">
+            <dt className="text-slate-500 dark:text-slate-400">Apartment type</dt>
+            <dd className="text-slate-900 dark:text-slate-100">{property.apartment_type ?? "—"}</dd>
             <dt className="text-slate-500 dark:text-slate-400">Type</dt>
             <dd className="text-slate-900 dark:text-slate-100">{property.type}</dd>
           </dl>
