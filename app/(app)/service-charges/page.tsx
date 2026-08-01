@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/Badge";
 import { labelClass } from "@/components/ui/fieldStyles";
 import { formatCurrency } from "@/lib/currency";
 import { APARTMENT_TYPES } from "@/lib/apartment-types";
-import { createStructure, deleteStructure, generateInvoices, recordPayment } from "./actions";
+import { BILLING_PERIODS } from "@/lib/billing-periods";
+import { createStructure, deleteStructure, recordDirectPayment, recordPayment } from "./actions";
 
 type InvoiceRow = {
   id: string;
@@ -17,6 +18,7 @@ type InvoiceRow = {
   due_date: string;
   status: string;
   resident_name: string | null;
+  period: string | null;
   properties: { street_name: string; house_number: string } | null;
   service_charge_structures: { name: string } | null;
 };
@@ -39,12 +41,16 @@ export default async function ServiceChargesPage({
   const supabase = await createClient();
   const { status } = await searchParams;
 
-  const [{ data: structures }, { data: invoices }] = await Promise.all([
+  const [{ data: structures }, { data: invoices }, { data: residentsForPayment }] = await Promise.all([
     supabase.from("service_charge_structures").select("*").order("name"),
     supabase
       .from("invoices")
-      .select("id, amount, due_date, status, resident_name, properties(street_name, house_number), service_charge_structures(name)")
+      .select("id, amount, due_date, status, resident_name, period, properties(street_name, house_number), service_charge_structures(name)")
       .order("due_date", { ascending: false }),
+    supabase
+      .from("residents")
+      .select("id, full_name, properties(house_number, street_name)")
+      .order("full_name"),
   ]);
 
   const filteredInvoices = ((invoices ?? []) as unknown as InvoiceRow[]).filter(
@@ -77,19 +83,62 @@ export default async function ServiceChargesPage({
                   {structure.applies_to_property_type ? ` · ${structure.applies_to_property_type}` : ""}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <form action={generateInvoices.bind(null, structure.id)} className="flex items-center gap-2">
-                  <Input type="date" name="due_date" required defaultValue={today} className="w-40" />
-                  <Button type="submit" variant="secondary">
-                    Generate invoices
-                  </Button>
-                </form>
-                <form action={deleteStructure.bind(null, structure.id)}>
-                  <Button type="submit" variant="danger">
-                    Delete
-                  </Button>
-                </form>
-              </div>
+              <form action={deleteStructure.bind(null, structure.id)}>
+                <Button type="submit" variant="danger">
+                  Delete
+                </Button>
+              </form>
+
+              <form
+                action={recordDirectPayment.bind(null, structure.id)}
+                className="flex w-full flex-wrap items-center gap-2 border-t border-slate-200 pt-3 dark:border-slate-800"
+              >
+                <Select name="resident_id" required defaultValue="" className="w-56">
+                  <option value="" disabled>
+                    Select resident
+                  </option>
+                  {residentsForPayment?.map((resident) => (
+                    <option key={resident.id} value={resident.id}>
+                      {resident.full_name}
+                      {resident.properties
+                        ? ` — ${resident.properties.house_number} ${resident.properties.street_name}`
+                        : ""}
+                    </option>
+                  ))}
+                </Select>
+                <Select
+                  name="period"
+                  defaultValue={
+                    BILLING_PERIODS.some((p) => p.value === structure.frequency) ? structure.frequency : "monthly"
+                  }
+                  className="w-32"
+                >
+                  {BILLING_PERIODS.map((p) => (
+                    <option key={p.value} value={p.value}>
+                      {p.label}
+                    </option>
+                  ))}
+                </Select>
+                <Input
+                  name="amount"
+                  type="number"
+                  step="0.01"
+                  defaultValue={structure.amount}
+                  required
+                  className="w-28"
+                />
+                <Input type="date" name="paid_at" required defaultValue={today} className="w-40" />
+                <Select name="method" defaultValue="bank_transfer" className="w-36">
+                  <option value="bank_transfer">Bank transfer</option>
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                  <option value="mobile_money">Mobile money</option>
+                </Select>
+                <Input name="reference" placeholder="Reference" className="w-32" />
+                <Button type="submit" variant="secondary">
+                  Record payment
+                </Button>
+              </form>
             </div>
           ))}
           {(!structures || structures.length === 0) && (
@@ -112,9 +161,11 @@ export default async function ServiceChargesPage({
           <div>
             <label className={labelClass}>Frequency</label>
             <Select name="frequency" defaultValue="monthly">
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="annually">Annually</option>
+              {BILLING_PERIODS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
             </Select>
           </div>
           <div>
@@ -176,8 +227,10 @@ export default async function ServiceChargesPage({
                     ? `${invoice.properties.house_number} ${invoice.properties.street_name}`
                     : "Unknown property"}
                   {" · "}
-                  {invoice.service_charge_structures?.name ?? "—"} · {formatCurrency(invoice.amount)} · due{" "}
-                  {invoice.due_date}
+                  {invoice.service_charge_structures?.name ?? "—"} · {formatCurrency(invoice.amount)}
+                  {invoice.period ? ` · ${BILLING_PERIODS.find((p) => p.value === invoice.period)?.label ?? invoice.period}` : ""}
+                  {" · "}
+                  {invoice.status === "paid" ? "paid" : "due"} {invoice.due_date}
                 </p>
               </div>
               <div className="flex items-center gap-3">

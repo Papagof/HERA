@@ -209,6 +209,7 @@ export type Database = {
           created_at: string
           due_date: string
           id: string
+          period: string | null
           property_id: string
           resident_id: string | null
           resident_name: string | null
@@ -220,6 +221,7 @@ export type Database = {
           created_at?: string
           due_date: string
           id?: string
+          period?: string | null
           property_id: string
           resident_id?: string | null
           resident_name?: string | null
@@ -231,6 +233,7 @@ export type Database = {
           created_at?: string
           due_date?: string
           id?: string
+          period?: string | null
           property_id?: string
           resident_id?: string | null
           resident_name?: string | null
@@ -447,6 +450,7 @@ export type Database = {
           invoice_id: string | null
           method: string
           paid_at: string
+          period: string | null
           property_id: string | null
           reference: string | null
           resident_id: string | null
@@ -458,6 +462,7 @@ export type Database = {
           invoice_id?: string | null
           method?: string
           paid_at?: string
+          period?: string | null
           property_id?: string | null
           reference?: string | null
           resident_id?: string | null
@@ -469,6 +474,7 @@ export type Database = {
           invoice_id?: string | null
           method?: string
           paid_at?: string
+          period?: string | null
           property_id?: string | null
           reference?: string | null
           resident_id?: string | null
