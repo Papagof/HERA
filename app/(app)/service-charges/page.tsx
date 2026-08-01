@@ -11,6 +11,7 @@ import { formatCurrency } from "@/lib/currency";
 import { APARTMENT_TYPES } from "@/lib/apartment-types";
 import { BILLING_PERIODS } from "@/lib/billing-periods";
 import { createStructure, deleteStructure, recordDirectPayment, recordPayment } from "./actions";
+import { RecordPaymentForm } from "./RecordPaymentForm";
 
 type InvoiceRow = {
   id: string;
@@ -41,17 +42,19 @@ export default async function ServiceChargesPage({
   const supabase = await createClient();
   const { status } = await searchParams;
 
-  const [{ data: structures }, { data: invoices }, { data: residentsForPayment }] = await Promise.all([
-    supabase.from("service_charge_structures").select("*").order("name"),
-    supabase
-      .from("invoices")
-      .select("id, amount, due_date, status, resident_name, period, properties(street_name, house_number), service_charge_structures(name)")
-      .order("due_date", { ascending: false }),
-    supabase
-      .from("residents")
-      .select("id, full_name, properties(house_number, street_name)")
-      .order("full_name"),
-  ]);
+  const [{ data: structures }, { data: invoices }, { data: residentsForPayment }, { data: landlordsForPayment }] =
+    await Promise.all([
+      supabase.from("service_charge_structures").select("*").order("name"),
+      supabase
+        .from("invoices")
+        .select("id, amount, due_date, status, resident_name, period, properties(street_name, house_number), service_charge_structures(name)")
+        .order("due_date", { ascending: false }),
+      supabase.from("residents").select("id, full_name, property_id").order("full_name"),
+      supabase
+        .from("landlords")
+        .select("id, full_name, property_id, properties(house_number, street_name)")
+        .order("full_name"),
+    ]);
 
   const filteredInvoices = ((invoices ?? []) as unknown as InvoiceRow[]).filter(
     (invoice) => !status || invoice.status === status
@@ -88,56 +91,16 @@ export default async function ServiceChargesPage({
                 </Button>
               </form>
 
-              <form
+              <RecordPaymentForm
                 action={recordDirectPayment.bind(null, structure.id)}
-                className="flex w-full flex-wrap items-center gap-2 border-t border-slate-200 pt-3 dark:border-slate-800"
-              >
-                <Select name="resident_id" required defaultValue="" className="w-56">
-                  <option value="" disabled>
-                    Select resident
-                  </option>
-                  {residentsForPayment?.map((resident) => (
-                    <option key={resident.id} value={resident.id}>
-                      {resident.full_name}
-                      {resident.properties
-                        ? ` — ${resident.properties.house_number} ${resident.properties.street_name}`
-                        : ""}
-                    </option>
-                  ))}
-                </Select>
-                <Select
-                  name="period"
-                  defaultValue={
-                    BILLING_PERIODS.some((p) => p.value === structure.frequency) ? structure.frequency : "monthly"
-                  }
-                  className="w-32"
-                >
-                  {BILLING_PERIODS.map((p) => (
-                    <option key={p.value} value={p.value}>
-                      {p.label}
-                    </option>
-                  ))}
-                </Select>
-                <Input
-                  name="amount"
-                  type="number"
-                  step="0.01"
-                  defaultValue={structure.amount}
-                  required
-                  className="w-28"
-                />
-                <Input type="date" name="paid_at" required defaultValue={today} className="w-40" />
-                <Select name="method" defaultValue="bank_transfer" className="w-36">
-                  <option value="bank_transfer">Bank transfer</option>
-                  <option value="cash">Cash</option>
-                  <option value="card">Card</option>
-                  <option value="mobile_money">Mobile money</option>
-                </Select>
-                <Input name="reference" placeholder="Reference" className="w-32" />
-                <Button type="submit" variant="secondary">
-                  Record payment
-                </Button>
-              </form>
+                landlords={landlordsForPayment ?? []}
+                residents={residentsForPayment ?? []}
+                defaultAmount={structure.amount}
+                defaultPeriod={
+                  BILLING_PERIODS.some((p) => p.value === structure.frequency) ? structure.frequency : "monthly"
+                }
+                today={today}
+              />
             </div>
           ))}
           {(!structures || structures.length === 0) && (
