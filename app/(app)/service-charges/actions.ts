@@ -36,9 +36,18 @@ export async function deleteStructure(structureId: string) {
   revalidatePath("/service-charges");
 }
 
-// Creates one unpaid invoice per resident (not per property - a unit with
-// three residents gets three invoices) for this structure/due date, skipping
-// residents who already have an invoice for that pair.
+// Only the primary resident per unit is billed: owner-occupier first, then
+// tenant, then family - falling back to whoever was added earliest within
+// the same relationship tier so the pick is deterministic.
+const RELATIONSHIP_PRIORITY: Record<string, number> = {
+  "owner-occupier": 0,
+  tenant: 1,
+  family: 2,
+};
+
+// Creates one unpaid invoice per unit's primary resident for this
+// structure/due date, skipping residents who already have an invoice for
+// that pair.
 export async function generateInvoices(structureId: string, formData: FormData) {
   const supabase = await createClient();
   const dueDate = str(formData, "due_date")!;
@@ -68,9 +77,19 @@ export async function generateInvoices(structureId: string, formData: FormData) 
 
   const { data: residents, error: residentsError } = await supabase
     .from("residents")
-    .select("id, full_name, property_id")
-    .in("property_id", propertyIds);
+    .select("id, full_name, property_id, relationship, created_at")
+    .in("property_id", propertyIds)
+    .order("created_at", { ascending: true });
   if (residentsError) throw new Error(residentsError.message);
+
+  const primaryByProperty = new Map<string, NonNullable<typeof residents>[number]>();
+  for (const resident of residents ?? []) {
+    const current = primaryByProperty.get(resident.property_id);
+    if (!current || RELATIONSHIP_PRIORITY[resident.relationship] < RELATIONSHIP_PRIORITY[current.relationship]) {
+      primaryByProperty.set(resident.property_id, resident);
+    }
+  }
+  const primaryResidents = Array.from(primaryByProperty.values());
 
   const { data: existing, error: existingError } = await supabase
     .from("invoices")
@@ -80,7 +99,7 @@ export async function generateInvoices(structureId: string, formData: FormData) 
   if (existingError) throw new Error(existingError.message);
 
   const alreadyInvoiced = new Set((existing ?? []).map((row) => row.resident_id));
-  const toInsert = (residents ?? [])
+  const toInsert = primaryResidents
     .filter((resident) => !alreadyInvoiced.has(resident.id))
     .map((resident) => ({
       property_id: resident.property_id,
