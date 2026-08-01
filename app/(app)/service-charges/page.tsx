@@ -80,7 +80,6 @@ export default async function ServiceChargesPage({
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {formatCurrency(structure.amount)} · {structure.frequency}
                   {structure.applies_to_apartment_type ? ` · ${structure.applies_to_apartment_type}` : ""}
-                  {structure.applies_to_property_type ? ` · ${structure.applies_to_property_type}` : ""}
                 </p>
               </div>
               <form action={deleteStructure.bind(null, structure.id)}>
@@ -177,16 +176,6 @@ export default async function ServiceChargesPage({
                   {apartmentType}
                 </option>
               ))}
-            </Select>
-          </div>
-          <div>
-            <label className={labelClass}>Applies to property type (optional)</label>
-            <Select name="applies_to_property_type" defaultValue="">
-              <option value="">All property types</option>
-              <option value="occupied">Occupied</option>
-              <option value="rent">For rent</option>
-              <option value="sale">For sale</option>
-              <option value="both">Rent or sale</option>
             </Select>
           </div>
           <div className="sm:col-span-2">

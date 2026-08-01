@@ -675,9 +675,6 @@ export type Database = {
         Row: {
           amount: number
           applies_to_apartment_type: string | null
-          applies_to_property_type:
-            | Database["public"]["Enums"]["property_type"]
-            | null
           created_at: string
           frequency: string
           id: string
@@ -686,9 +683,6 @@ export type Database = {
         Insert: {
           amount: number
           applies_to_apartment_type?: string | null
-          applies_to_property_type?:
-            | Database["public"]["Enums"]["property_type"]
-            | null
           created_at?: string
           frequency?: string
           id?: string
@@ -697,9 +691,6 @@ export type Database = {
         Update: {
           amount?: number
           applies_to_apartment_type?: string | null
-          applies_to_property_type?:
-            | Database["public"]["Enums"]["property_type"]
-            | null
           created_at?: string
           frequency?: string
           id?: string

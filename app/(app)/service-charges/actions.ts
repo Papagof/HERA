@@ -2,9 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@/lib/types/database";
-
-type PropertyType = Database["public"]["Enums"]["property_type"];
 
 function str(formData: FormData, key: string): string | null {
   const value = formData.get(key);
@@ -18,7 +15,6 @@ export async function createStructure(formData: FormData) {
     name: str(formData, "name")!,
     amount: Number(str(formData, "amount")),
     frequency: str(formData, "frequency") ?? "monthly",
-    applies_to_property_type: (str(formData, "applies_to_property_type") as PropertyType) ?? null,
     applies_to_apartment_type: str(formData, "applies_to_apartment_type"),
   });
 
