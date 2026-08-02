@@ -206,6 +206,8 @@ export type Database = {
       invoices: {
         Row: {
           amount: number
+          covers_end: string | null
+          covers_start: string | null
           created_at: string
           due_date: string
           id: string
@@ -218,6 +220,8 @@ export type Database = {
         }
         Insert: {
           amount: number
+          covers_end?: string | null
+          covers_start?: string | null
           created_at?: string
           due_date: string
           id?: string
@@ -230,6 +234,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          covers_end?: string | null
+          covers_start?: string | null
           created_at?: string
           due_date?: string
           id?: string
@@ -446,6 +452,8 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          covers_end: string | null
+          covers_start: string | null
           id: string
           invoice_id: string | null
           method: string
@@ -458,6 +466,8 @@ export type Database = {
         }
         Insert: {
           amount: number
+          covers_end?: string | null
+          covers_start?: string | null
           id?: string
           invoice_id?: string | null
           method?: string
@@ -470,6 +480,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          covers_end?: string | null
+          covers_start?: string | null
           id?: string
           invoice_id?: string | null
           method?: string

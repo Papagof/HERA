@@ -28,6 +28,7 @@ export function RecordPaymentForm({
   defaultAmount,
   defaultPeriod,
   today,
+  currentMonth,
 }: {
   action: (formData: FormData) => void;
   landlords: Landlord[];
@@ -35,6 +36,7 @@ export function RecordPaymentForm({
   defaultAmount: number;
   defaultPeriod: string;
   today: string;
+  currentMonth: string;
 }) {
   const [landlordId, setLandlordId] = useState("");
   const selectedLandlord = landlords.find((l) => l.id === landlordId);
@@ -83,6 +85,14 @@ export function RecordPaymentForm({
           </option>
         ))}
       </Select>
+      <Input
+        name="covers_start_month"
+        type="month"
+        required
+        defaultValue={currentMonth}
+        title="Starting month this payment covers"
+        className="w-36"
+      />
       <Input name="amount" type="number" step="0.01" defaultValue={defaultAmount} required className="w-28" />
       <Input type="date" name="paid_at" required defaultValue={today} className="w-40" />
       <Select name="method" defaultValue="bank_transfer" className="w-36">

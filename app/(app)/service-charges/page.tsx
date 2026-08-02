@@ -10,6 +10,7 @@ import { labelClass } from "@/components/ui/fieldStyles";
 import { formatCurrency } from "@/lib/currency";
 import { APARTMENT_TYPES } from "@/lib/apartment-types";
 import { BILLING_PERIODS } from "@/lib/billing-periods";
+import { currentMonth as getCurrentMonth, dateToMonth, formatMonthLabel, monthRange } from "@/lib/month";
 import { createStructure, deleteStructure, recordDirectPayment, recordPayment } from "./actions";
 import { RecordPaymentForm } from "./RecordPaymentForm";
 
@@ -20,9 +21,49 @@ type InvoiceRow = {
   status: string;
   resident_name: string | null;
   period: string | null;
+  covers_start: string | null;
+  covers_end: string | null;
   properties: { street_name: string; house_number: string } | null;
   service_charge_structures: { name: string } | null;
 };
+
+type CoverageRow = {
+  covers_start: string;
+  covers_end: string;
+  service_charge_structures: { name: string } | null;
+};
+
+type StructureCoverage = {
+  structureName: string;
+  paidThrough: string;
+  owingMonths: string[];
+};
+
+function computeCoverageByStructure(rows: CoverageRow[], nowMonth: string): StructureCoverage[] {
+  const byStructure = new Map<string, CoverageRow[]>();
+  for (const row of rows) {
+    const name = row.service_charge_structures?.name ?? "Unknown structure";
+    if (!byStructure.has(name)) byStructure.set(name, []);
+    byStructure.get(name)!.push(row);
+  }
+
+  const result: StructureCoverage[] = [];
+  for (const [structureName, structureRows] of byStructure) {
+    const covered = new Set<string>();
+    let earliestStart = dateToMonth(structureRows[0].covers_start);
+    let latestEnd = dateToMonth(structureRows[0].covers_end);
+    for (const row of structureRows) {
+      const start = dateToMonth(row.covers_start);
+      const end = dateToMonth(row.covers_end);
+      for (const month of monthRange(start, end)) covered.add(month);
+      if (start < earliestStart) earliestStart = start;
+      if (end > latestEnd) latestEnd = end;
+    }
+    const owingMonths = monthRange(earliestStart, nowMonth).filter((month) => !covered.has(month));
+    result.push({ structureName, paidThrough: latestEnd, owingMonths });
+  }
+  return result;
+}
 
 const STATUS_TONE: Record<string, "green" | "amber" | "red" | "slate"> = {
   paid: "green",
@@ -34,20 +75,20 @@ const STATUS_TONE: Record<string, "green" | "amber" | "red" | "slate"> = {
 export default async function ServiceChargesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; resident?: string }>;
 }) {
   const profile = await requireProfile();
   if (!isStaff(profile.role) && profile.role !== "accountant") redirect("/dashboard");
 
   const supabase = await createClient();
-  const { status } = await searchParams;
+  const { status, resident: residentFilter } = await searchParams;
 
   const [{ data: structures }, { data: invoices }, { data: residentsForPayment }, { data: landlordsForPayment }] =
     await Promise.all([
       supabase.from("service_charge_structures").select("*").order("name"),
       supabase
         .from("invoices")
-        .select("id, amount, due_date, status, resident_name, period, properties(street_name, house_number), service_charge_structures(name)")
+        .select("id, amount, due_date, status, resident_name, period, covers_start, covers_end, properties(street_name, house_number), service_charge_structures(name)")
         .order("due_date", { ascending: false }),
       supabase.from("residents").select("id, full_name, property_id").order("full_name"),
       supabase
@@ -61,6 +102,18 @@ export default async function ServiceChargesPage({
   );
 
   const today = new Date().toISOString().slice(0, 10);
+  const nowMonth = getCurrentMonth();
+
+  let coverageByStructure: StructureCoverage[] = [];
+  if (residentFilter) {
+    const { data: coverageRows } = await supabase
+      .from("invoices")
+      .select("covers_start, covers_end, service_charge_structures(name)")
+      .eq("resident_id", residentFilter)
+      .not("covers_start", "is", null)
+      .order("covers_start");
+    coverageByStructure = computeCoverageByStructure((coverageRows ?? []) as unknown as CoverageRow[], nowMonth);
+  }
 
   return (
     <div className="space-y-6">
@@ -100,6 +153,7 @@ export default async function ServiceChargesPage({
                   BILLING_PERIODS.some((p) => p.value === structure.frequency) ? structure.frequency : "monthly"
                 }
                 today={today}
+                currentMonth={nowMonth}
               />
             </div>
           ))}
@@ -148,6 +202,56 @@ export default async function ServiceChargesPage({
       </Card>
 
       <Card>
+        <h2 className="mb-4 text-lg font-medium text-slate-900 dark:text-slate-100">
+          Payment coverage
+        </h2>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          Pick a resident to see which months they&apos;ve paid for, per charge, and which months they&apos;re owing.
+        </p>
+        <form className="flex flex-wrap items-center gap-2">
+          <Select name="resident" defaultValue={residentFilter ?? ""} className="w-64">
+            <option value="">Select a resident</option>
+            {residentsForPayment?.map((resident) => (
+              <option key={resident.id} value={resident.id}>
+                {resident.full_name}
+              </option>
+            ))}
+          </Select>
+          <Button type="submit" variant="secondary">
+            Show coverage
+          </Button>
+        </form>
+
+        {residentFilter && (
+          <div className="mt-4 space-y-3">
+            {coverageByStructure.length === 0 && (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                No payment history with month coverage found for this resident.
+              </p>
+            )}
+            {coverageByStructure.map((coverage) => (
+              <div
+                key={coverage.structureName}
+                className="rounded-md border border-slate-200 p-3 dark:border-slate-800"
+              >
+                <p className="font-medium text-slate-900 dark:text-slate-100">{coverage.structureName}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Paid through {formatMonthLabel(coverage.paidThrough)}
+                </p>
+                {coverage.owingMonths.length > 0 ? (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                    Owing: {coverage.owingMonths.map(formatMonthLabel).join(", ")}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-sm text-emerald-600 dark:text-emerald-400">Up to date</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Card>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-medium text-slate-900 dark:text-slate-100">Invoices</h2>
           <form className="flex items-center gap-2">
@@ -180,7 +284,15 @@ export default async function ServiceChargesPage({
                     : "Unknown property"}
                   {" · "}
                   {invoice.service_charge_structures?.name ?? "—"} · {formatCurrency(invoice.amount)}
-                  {invoice.period ? ` · ${BILLING_PERIODS.find((p) => p.value === invoice.period)?.label ?? invoice.period}` : ""}
+                  {invoice.covers_start && invoice.covers_end
+                    ? ` · covers ${
+                        dateToMonth(invoice.covers_start) === dateToMonth(invoice.covers_end)
+                          ? formatMonthLabel(dateToMonth(invoice.covers_start))
+                          : `${formatMonthLabel(dateToMonth(invoice.covers_start))} – ${formatMonthLabel(dateToMonth(invoice.covers_end))}`
+                      }`
+                    : invoice.period
+                      ? ` · ${BILLING_PERIODS.find((p) => p.value === invoice.period)?.label ?? invoice.period}`
+                      : ""}
                   {" · "}
                   {invoice.status === "paid" ? "paid" : "due"} {invoice.due_date}
                 </p>

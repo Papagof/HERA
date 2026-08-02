@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { MONTHS_COVERED } from "@/lib/billing-periods";
+import { addMonths, monthToDate } from "@/lib/month";
 
 function str(formData: FormData, key: string): string | null {
   const value = formData.get(key);
@@ -49,6 +51,11 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
   const amount = Number(str(formData, "amount"));
   const paidAt = str(formData, "paid_at") ?? new Date().toISOString().slice(0, 10);
 
+  const coversStartMonth = str(formData, "covers_start_month")!;
+  const coversEndMonth = addMonths(coversStartMonth, (MONTHS_COVERED[period] ?? 1) - 1);
+  const coversStart = monthToDate(coversStartMonth);
+  const coversEnd = monthToDate(coversEndMonth);
+
   const [{ data: resident, error: residentError }, { data: structure, error: structureError }] = await Promise.all([
     supabase.from("residents").select("id, full_name, property_id").eq("id", residentId).single(),
     supabase.from("service_charge_structures").select("name").eq("id", structureId).single(),
@@ -66,6 +73,8 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
       amount,
       due_date: paidAt,
       period,
+      covers_start: coversStart,
+      covers_end: coversEnd,
       status: "paid",
     })
     .select("id")
@@ -79,6 +88,8 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
     resident_name: resident.full_name,
     amount,
     period,
+    covers_start: coversStart,
+    covers_end: coversEnd,
     paid_at: paidAt,
     method: str(formData, "method") ?? "bank_transfer",
     reference: str(formData, "reference"),
