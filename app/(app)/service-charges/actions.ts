@@ -117,6 +117,12 @@ export async function recordPayment(invoiceId: string, formData: FormData) {
     .single();
   if (invoiceError) throw new Error(invoiceError.message);
 
+  // Guards against double-submission (e.g. a double-click before the UI
+  // re-renders and hides this form) recording the same payment twice.
+  if (invoice.status === "paid") {
+    throw new Error("This invoice is already fully paid.");
+  }
+
   const amount = Number(str(formData, "amount"));
   const paidAt = new Date().toISOString().slice(0, 10);
 
