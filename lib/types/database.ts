@@ -211,6 +211,9 @@ export type Database = {
           created_at: string
           due_date: string
           id: string
+          landlord_id: string | null
+          landlord_name: string | null
+          payer_type: string | null
           period: string | null
           property_id: string
           resident_id: string | null
@@ -225,6 +228,9 @@ export type Database = {
           created_at?: string
           due_date: string
           id?: string
+          landlord_id?: string | null
+          landlord_name?: string | null
+          payer_type?: string | null
           period?: string | null
           property_id: string
           resident_id?: string | null
@@ -239,6 +245,9 @@ export type Database = {
           created_at?: string
           due_date?: string
           id?: string
+          landlord_id?: string | null
+          landlord_name?: string | null
+          payer_type?: string | null
           period?: string | null
           property_id?: string
           resident_id?: string | null
@@ -252,6 +261,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_landlord_id_fkey"
+            columns: ["landlord_id"]
+            isOneToOne: false
+            referencedRelation: "landlords"
             referencedColumns: ["id"]
           },
           {
@@ -456,8 +472,11 @@ export type Database = {
           covers_start: string | null
           id: string
           invoice_id: string | null
+          landlord_id: string | null
+          landlord_name: string | null
           method: string
           paid_at: string
+          payer_type: string | null
           period: string | null
           property_id: string | null
           reference: string | null
@@ -470,8 +489,11 @@ export type Database = {
           covers_start?: string | null
           id?: string
           invoice_id?: string | null
+          landlord_id?: string | null
+          landlord_name?: string | null
           method?: string
           paid_at?: string
+          payer_type?: string | null
           period?: string | null
           property_id?: string | null
           reference?: string | null
@@ -484,8 +506,11 @@ export type Database = {
           covers_start?: string | null
           id?: string
           invoice_id?: string | null
+          landlord_id?: string | null
+          landlord_name?: string | null
           method?: string
           paid_at?: string
+          payer_type?: string | null
           period?: string | null
           property_id?: string | null
           reference?: string | null
@@ -505,6 +530,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_landlord_id_fkey"
+            columns: ["landlord_id"]
+            isOneToOne: false
+            referencedRelation: "landlords"
             referencedColumns: ["id"]
           },
           {
@@ -687,6 +719,7 @@ export type Database = {
         Row: {
           amount: number
           applies_to_apartment_type: string | null
+          charge_category: string
           created_at: string
           frequency: string
           id: string
@@ -695,6 +728,7 @@ export type Database = {
         Insert: {
           amount: number
           applies_to_apartment_type?: string | null
+          charge_category?: string
           created_at?: string
           frequency?: string
           id?: string
@@ -703,6 +737,7 @@ export type Database = {
         Update: {
           amount?: number
           applies_to_apartment_type?: string | null
+          charge_category?: string
           created_at?: string
           frequency?: string
           id?: string

@@ -18,6 +18,7 @@ export async function createStructure(formData: FormData) {
     amount: Number(str(formData, "amount")),
     frequency: str(formData, "frequency") ?? "monthly",
     applies_to_apartment_type: str(formData, "applies_to_apartment_type"),
+    charge_category: str(formData, "charge_category") ?? "Service Charge",
   });
 
   if (error) throw new Error(error.message);
@@ -34,19 +35,20 @@ export async function deleteStructure(structureId: string) {
   revalidatePath("/service-charges");
 }
 
-// Payment is recorded directly for a resident - no separate "generate
-// invoice" step first. Creates the invoice (already status='paid') and the
-// payment together in one transaction-like sequence, both snapshotting the
-// resident's name/property so history reads correctly even if that resident
-// later moves out. Also logs the payment as income so it shows up in
-// Income & Expenditure without a separate manual entry.
+// Payment is recorded directly for a payer (a resident or a landlord,
+// depending on the structure's charge_category - Service Charge is
+// resident-only, Development Levy is landlord-only, everything else can be
+// either) - no separate "generate invoice" step first. Creates the invoice
+// (already status='paid') and the payment together, both snapshotting the
+// payer's name/property so history reads correctly even after they leave.
+// Also logs the payment as income under the structure's own category.
 export async function recordDirectPayment(structureId: string, formData: FormData) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const residentId = str(formData, "resident_id")!;
+  const payerType = str(formData, "payer_type") === "landlord" ? "landlord" : "resident";
   const period = str(formData, "period") ?? "monthly";
   const amount = Number(str(formData, "amount"));
   const paidAt = str(formData, "paid_at") ?? new Date().toISOString().slice(0, 10);
@@ -56,19 +58,55 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
   const coversStart = monthToDate(coversStartMonth);
   const coversEnd = monthToDate(coversEndMonth);
 
-  const [{ data: resident, error: residentError }, { data: structure, error: structureError }] = await Promise.all([
-    supabase.from("residents").select("id, full_name, property_id").eq("id", residentId).single(),
-    supabase.from("service_charge_structures").select("name").eq("id", structureId).single(),
-  ]);
-  if (residentError) throw new Error(residentError.message);
+  const { data: structure, error: structureError } = await supabase
+    .from("service_charge_structures")
+    .select("name, charge_category")
+    .eq("id", structureId)
+    .single();
   if (structureError) throw new Error(structureError.message);
+
+  let propertyId: string;
+  let payerName: string;
+  let residentId: string | null = null;
+  let residentName: string | null = null;
+  let landlordId: string | null = null;
+  let landlordName: string | null = null;
+
+  if (payerType === "resident") {
+    const id = str(formData, "resident_id")!;
+    const { data: resident, error: residentError } = await supabase
+      .from("residents")
+      .select("id, full_name, property_id")
+      .eq("id", id)
+      .single();
+    if (residentError) throw new Error(residentError.message);
+    propertyId = resident.property_id;
+    payerName = resident.full_name;
+    residentId = resident.id;
+    residentName = resident.full_name;
+  } else {
+    const id = str(formData, "landlord_id")!;
+    const { data: landlord, error: landlordError } = await supabase
+      .from("landlords")
+      .select("id, full_name, property_id")
+      .eq("id", id)
+      .single();
+    if (landlordError) throw new Error(landlordError.message);
+    propertyId = landlord.property_id;
+    payerName = landlord.full_name;
+    landlordId = landlord.id;
+    landlordName = landlord.full_name;
+  }
 
   const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
     .insert({
-      property_id: resident.property_id,
-      resident_id: resident.id,
-      resident_name: resident.full_name,
+      property_id: propertyId,
+      payer_type: payerType,
+      resident_id: residentId,
+      resident_name: residentName,
+      landlord_id: landlordId,
+      landlord_name: landlordName,
       structure_id: structureId,
       amount,
       due_date: paidAt,
@@ -83,9 +121,12 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
 
   const { error: paymentError } = await supabase.from("payments").insert({
     invoice_id: invoice.id,
-    property_id: resident.property_id,
-    resident_id: resident.id,
-    resident_name: resident.full_name,
+    property_id: propertyId,
+    payer_type: payerType,
+    resident_id: residentId,
+    resident_name: residentName,
+    landlord_id: landlordId,
+    landlord_name: landlordName,
     amount,
     period,
     covers_start: coversStart,
@@ -98,8 +139,8 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
 
   const { error: incomeError } = await supabase.from("income_expenditure_entries").insert({
     entry_type: "income",
-    category: "Service Charge",
-    description: `${structure.name} — ${resident.full_name}`,
+    category: structure.charge_category,
+    description: `${structure.name} — ${payerName}`,
     amount,
     entry_date: paidAt,
     recorded_by: user?.id ?? null,
@@ -123,7 +164,7 @@ export async function recordPayment(invoiceId: string, formData: FormData) {
 
   const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
-    .select("*, service_charge_structures(name)")
+    .select("*, service_charge_structures(name, charge_category)")
     .eq("id", invoiceId)
     .single();
   if (invoiceError) throw new Error(invoiceError.message);
@@ -140,8 +181,11 @@ export async function recordPayment(invoiceId: string, formData: FormData) {
   const { error: paymentError } = await supabase.from("payments").insert({
     invoice_id: invoiceId,
     property_id: invoice.property_id,
+    payer_type: invoice.payer_type,
     resident_id: invoice.resident_id,
     resident_name: invoice.resident_name,
+    landlord_id: invoice.landlord_id,
+    landlord_name: invoice.landlord_name,
     amount,
     period: invoice.period,
     paid_at: paidAt,
@@ -165,12 +209,14 @@ export async function recordPayment(invoiceId: string, formData: FormData) {
     .eq("id", invoiceId);
   if (updateError) throw new Error(updateError.message);
 
-  const structureName = (invoice as { service_charge_structures: { name: string } | null }).service_charge_structures
-    ?.name;
+  const structureInfo = (
+    invoice as { service_charge_structures: { name: string; charge_category: string } | null }
+  ).service_charge_structures;
+  const payerName = invoice.resident_name ?? invoice.landlord_name ?? "Unknown payer";
   const { error: incomeError } = await supabase.from("income_expenditure_entries").insert({
     entry_type: "income",
-    category: "Service Charge",
-    description: `${structureName ?? "Service charge"} — ${invoice.resident_name ?? "Unknown resident"}`,
+    category: structureInfo?.charge_category ?? "Service Charge",
+    description: `${structureInfo?.name ?? "Service charge"} — ${payerName}`,
     amount,
     entry_date: paidAt,
     recorded_by: user?.id ?? null,

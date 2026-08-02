@@ -16,7 +16,7 @@ const AUDIT_ROLES: Role[] = ["super_admin", "executive_current", "executive_past
 const NAV_ITEMS: { label: string; href: string; roles?: Role[] }[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Directory", href: "/directory" },
-  { label: "Service Charges", href: "/service-charges", roles: [...STAFF_ROLES, "accountant"] },
+  { label: "Payment", href: "/service-charges", roles: [...STAFF_ROLES, "accountant"] },
   { label: "Listings", href: "/property-listings", roles: STAFF_ROLES },
   { label: "Executives", href: "/executives" },
   { label: "Community", href: "/community" },

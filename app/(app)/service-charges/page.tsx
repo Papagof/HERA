@@ -10,9 +10,12 @@ import { labelClass } from "@/components/ui/fieldStyles";
 import { formatCurrency } from "@/lib/currency";
 import { APARTMENT_TYPES } from "@/lib/apartment-types";
 import { BILLING_PERIODS } from "@/lib/billing-periods";
+import { INCOME_CATEGORIES } from "@/lib/income-categories";
 import { currentMonth as getCurrentMonth, dateToMonth, formatMonthLabel, monthRange } from "@/lib/month";
 import { createStructure, deleteStructure, recordDirectPayment, recordPayment } from "./actions";
 import { RecordPaymentForm } from "./RecordPaymentForm";
+
+const SERVICE_CHARGE = "Service Charge";
 
 type InvoiceRow = {
   id: string;
@@ -20,11 +23,36 @@ type InvoiceRow = {
   due_date: string;
   status: string;
   resident_name: string | null;
+  landlord_name: string | null;
   period: string | null;
   covers_start: string | null;
   covers_end: string | null;
   properties: { street_name: string; house_number: string } | null;
-  service_charge_structures: { name: string } | null;
+  service_charge_structures: { name: string; charge_category: string } | null;
+};
+
+type StructureRow = {
+  id: string;
+  name: string;
+  amount: number;
+  frequency: string;
+  applies_to_apartment_type: string | null;
+  charge_category: string;
+};
+
+type PropertyLabel = { house_number: string; street_name: string } | null;
+
+type LandlordForPayment = {
+  id: string;
+  full_name: string;
+  property_id: string;
+  properties: PropertyLabel;
+};
+
+type ResidentForPayment = {
+  id: string;
+  full_name: string;
+  property_id: string;
 };
 
 type CoverageRow = {
@@ -72,23 +100,76 @@ const STATUS_TONE: Record<string, "green" | "amber" | "red" | "slate"> = {
   unpaid: "slate",
 };
 
+function StructureList({
+  list,
+  landlords,
+  residents,
+  today,
+  nowMonth,
+}: {
+  list: StructureRow[];
+  landlords: LandlordForPayment[];
+  residents: ResidentForPayment[];
+  today: string;
+  nowMonth: string;
+}) {
+  return (
+    <div className="space-y-3">
+      {list.map((structure) => (
+        <div
+          key={structure.id}
+          className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-800"
+        >
+          <div>
+            <p className="font-medium text-slate-900 dark:text-slate-100">{structure.name}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {formatCurrency(structure.amount)} · {structure.frequency} · {structure.charge_category}
+              {structure.applies_to_apartment_type ? ` · ${structure.applies_to_apartment_type}` : ""}
+            </p>
+          </div>
+          <form action={deleteStructure.bind(null, structure.id)}>
+            <Button type="submit" variant="danger">
+              Delete
+            </Button>
+          </form>
+
+          <RecordPaymentForm
+            action={recordDirectPayment.bind(null, structure.id)}
+            landlords={landlords}
+            residents={residents}
+            defaultAmount={structure.amount}
+            defaultPeriod={BILLING_PERIODS.some((p) => p.value === structure.frequency) ? structure.frequency : "monthly"}
+            today={today}
+            currentMonth={nowMonth}
+            chargeCategory={structure.charge_category}
+          />
+        </div>
+      ))}
+      {list.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">None yet.</p>}
+    </div>
+  );
+}
+
 export default async function ServiceChargesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; resident?: string }>;
+  searchParams: Promise<{ status?: string; payer?: string }>;
 }) {
   const profile = await requireProfile();
   if (!isStaff(profile.role) && profile.role !== "accountant") redirect("/dashboard");
 
   const supabase = await createClient();
-  const { status, resident: residentFilter } = await searchParams;
+  const { status, payer } = await searchParams;
+  const [payerType, payerId] = payer ? payer.split(":") : [null, null];
 
   const [{ data: structures }, { data: invoices }, { data: residentsForPayment }, { data: landlordsForPayment }] =
     await Promise.all([
       supabase.from("service_charge_structures").select("*").order("name"),
       supabase
         .from("invoices")
-        .select("id, amount, due_date, status, resident_name, period, covers_start, covers_end, properties(street_name, house_number), service_charge_structures(name)")
+        .select(
+          "id, amount, due_date, status, resident_name, landlord_name, period, covers_start, covers_end, properties(street_name, house_number), service_charge_structures(name, charge_category)"
+        )
         .order("due_date", { ascending: false }),
       supabase.from("residents").select("id, full_name, property_id").order("full_name"),
       supabase
@@ -104,12 +185,16 @@ export default async function ServiceChargesPage({
   const today = new Date().toISOString().slice(0, 10);
   const nowMonth = getCurrentMonth();
 
+  const serviceChargeStructures = (structures ?? []).filter((s) => s.charge_category === SERVICE_CHARGE);
+  const otherStructures = (structures ?? []).filter((s) => s.charge_category !== SERVICE_CHARGE);
+
   let coverageByStructure: StructureCoverage[] = [];
-  if (residentFilter) {
+  if (payerType && payerId) {
+    const column = payerType === "landlord" ? "landlord_id" : "resident_id";
     const { data: coverageRows } = await supabase
       .from("invoices")
       .select("covers_start, covers_end, service_charge_structures(name)")
-      .eq("resident_id", residentFilter)
+      .eq(column, payerId)
       .not("covers_start", "is", null)
       .order("covers_start");
     coverageByStructure = computeCoverageByStructure((coverageRows ?? []) as unknown as CoverageRow[], nowMonth);
@@ -117,55 +202,42 @@ export default async function ServiceChargesPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-        Service Charge Management
-      </h1>
+      <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Payment Management</h1>
 
       <Card>
         <h2 className="mb-4 text-lg font-medium text-slate-900 dark:text-slate-100">
-          Charge structures
+          Service Charge (residents only)
         </h2>
-        <div className="space-y-3">
-          {structures?.map((structure) => (
-            <div
-              key={structure.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-800"
-            >
-              <div>
-                <p className="font-medium text-slate-900 dark:text-slate-100">{structure.name}</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {formatCurrency(structure.amount)} · {structure.frequency}
-                  {structure.applies_to_apartment_type ? ` · ${structure.applies_to_apartment_type}` : ""}
-                </p>
-              </div>
-              <form action={deleteStructure.bind(null, structure.id)}>
-                <Button type="submit" variant="danger">
-                  Delete
-                </Button>
-              </form>
+        <StructureList
+          list={serviceChargeStructures}
+          landlords={landlordsForPayment ?? []}
+          residents={residentsForPayment ?? []}
+          today={today}
+          nowMonth={nowMonth}
+        />
+      </Card>
 
-              <RecordPaymentForm
-                action={recordDirectPayment.bind(null, structure.id)}
-                landlords={landlordsForPayment ?? []}
-                residents={residentsForPayment ?? []}
-                defaultAmount={structure.amount}
-                defaultPeriod={
-                  BILLING_PERIODS.some((p) => p.value === structure.frequency) ? structure.frequency : "monthly"
-                }
-                today={today}
-                currentMonth={nowMonth}
-              />
-            </div>
-          ))}
-          {(!structures || structures.length === 0) && (
-            <p className="text-sm text-slate-500 dark:text-slate-400">No charge structures yet.</p>
-          )}
-        </div>
+      <Card>
+        <h2 className="mb-1 text-lg font-medium text-slate-900 dark:text-slate-100">Other Charges</h2>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          Development Levy is billed to landlords only. Toll, 5% on Rented Property, Donation, and Others can be paid
+          by either a resident or a landlord.
+        </p>
+        <StructureList
+          list={otherStructures}
+          landlords={landlordsForPayment ?? []}
+          residents={residentsForPayment ?? []}
+          today={today}
+          nowMonth={nowMonth}
+        />
+      </Card>
 
-        <form action={createStructure} className="mt-6 grid grid-cols-1 gap-3 border-t border-slate-200 pt-4 dark:border-slate-800 sm:grid-cols-2">
-          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 sm:col-span-2">
-            Add structure
-          </p>
+      <Card>
+        <form
+          action={createStructure}
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+        >
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 sm:col-span-2">Add structure</p>
           <div>
             <label className={labelClass}>Name</label>
             <Input name="name" required />
@@ -173,6 +245,16 @@ export default async function ServiceChargesPage({
           <div>
             <label className={labelClass}>Amount</label>
             <Input name="amount" type="number" step="0.01" required />
+          </div>
+          <div>
+            <label className={labelClass}>Category</label>
+            <Select name="charge_category" defaultValue={SERVICE_CHARGE}>
+              {INCOME_CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </Select>
           </div>
           <div>
             <label className={labelClass}>Frequency</label>
@@ -202,31 +284,39 @@ export default async function ServiceChargesPage({
       </Card>
 
       <Card>
-        <h2 className="mb-4 text-lg font-medium text-slate-900 dark:text-slate-100">
-          Payment coverage
-        </h2>
+        <h2 className="mb-4 text-lg font-medium text-slate-900 dark:text-slate-100">Payment coverage</h2>
         <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-          Pick a resident to see which months they&apos;ve paid for, per charge, and which months they&apos;re owing.
+          Pick a resident or landlord to see which months they&apos;ve paid for, per charge, and which months
+          they&apos;re owing.
         </p>
         <form className="flex flex-wrap items-center gap-2">
-          <Select name="resident" defaultValue={residentFilter ?? ""} className="w-64">
-            <option value="">Select a resident</option>
-            {residentsForPayment?.map((resident) => (
-              <option key={resident.id} value={resident.id}>
-                {resident.full_name}
-              </option>
-            ))}
+          <Select name="payer" defaultValue={payer ?? ""} className="w-72">
+            <option value="">Select a payer</option>
+            <optgroup label="Residents">
+              {residentsForPayment?.map((resident) => (
+                <option key={`resident:${resident.id}`} value={`resident:${resident.id}`}>
+                  {resident.full_name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Landlords">
+              {landlordsForPayment?.map((landlord) => (
+                <option key={`landlord:${landlord.id}`} value={`landlord:${landlord.id}`}>
+                  {landlord.full_name}
+                </option>
+              ))}
+            </optgroup>
           </Select>
           <Button type="submit" variant="secondary">
             Show coverage
           </Button>
         </form>
 
-        {residentFilter && (
+        {payerType && payerId && (
           <div className="mt-4 space-y-3">
             {coverageByStructure.length === 0 && (
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                No payment history with month coverage found for this resident.
+                No payment history with month coverage found for this payer.
               </p>
             )}
             {coverageByStructure.map((coverage) => (
@@ -276,7 +366,8 @@ export default async function ServiceChargesPage({
             >
               <div>
                 <p className="font-medium text-slate-900 dark:text-slate-100">
-                  {invoice.resident_name ?? "Unknown resident"}
+                  {invoice.resident_name ?? invoice.landlord_name ?? "Unknown payer"}
+                  {invoice.landlord_name && !invoice.resident_name ? " (landlord)" : ""}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {invoice.properties
