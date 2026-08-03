@@ -13,6 +13,7 @@ function revalidateAllPaymentPages() {
 
 const SERVICE_CHARGE = "Service Charge";
 const DEVELOPMENT_LEVY = "Development Levy";
+const TOLL = "Toll";
 
 function str(formData: FormData, key: string): string | null {
   const value = formData.get(key);
@@ -44,7 +45,6 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
     data: { user },
   } = await supabase.auth.getUser();
 
-  const payerType = str(formData, "payer_type") === "landlord" ? "landlord" : "resident";
   const paidAt = str(formData, "paid_at") ?? new Date().toISOString().slice(0, 10);
 
   const { data: structure, error: structureError } = await supabase
@@ -74,37 +74,47 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
     amount = Number(str(formData, "amount"));
   }
 
-  let propertyId: string;
+  let propertyId: string | null = null;
   let payerName: string;
+  let payerType: string | null = null;
   let residentId: string | null = null;
   let residentName: string | null = null;
   let landlordId: string | null = null;
   let landlordName: string | null = null;
+  let payerNameManual: string | null = null;
 
-  if (payerType === "resident") {
-    const id = str(formData, "resident_id")!;
-    const { data: resident, error: residentError } = await supabase
-      .from("residents")
-      .select("id, full_name, property_id")
-      .eq("id", id)
-      .single();
-    if (residentError) throw new Error(residentError.message);
-    propertyId = resident.property_id;
-    payerName = resident.full_name;
-    residentId = resident.id;
-    residentName = resident.full_name;
+  if (structure.charge_category === TOLL) {
+    // Toll is the one category recorded by typing a name directly - no
+    // resident/landlord lookup, no property link.
+    payerNameManual = str(formData, "payer_name")!;
+    payerName = payerNameManual;
   } else {
-    const id = str(formData, "landlord_id")!;
-    const { data: landlord, error: landlordError } = await supabase
-      .from("landlords")
-      .select("id, full_name, property_id")
-      .eq("id", id)
-      .single();
-    if (landlordError) throw new Error(landlordError.message);
-    propertyId = landlord.property_id;
-    payerName = landlord.full_name;
-    landlordId = landlord.id;
-    landlordName = landlord.full_name;
+    payerType = str(formData, "payer_type") === "landlord" ? "landlord" : "resident";
+    if (payerType === "resident") {
+      const id = str(formData, "resident_id")!;
+      const { data: resident, error: residentError } = await supabase
+        .from("residents")
+        .select("id, full_name, property_id")
+        .eq("id", id)
+        .single();
+      if (residentError) throw new Error(residentError.message);
+      propertyId = resident.property_id;
+      payerName = resident.full_name;
+      residentId = resident.id;
+      residentName = resident.full_name;
+    } else {
+      const id = str(formData, "landlord_id")!;
+      const { data: landlord, error: landlordError } = await supabase
+        .from("landlords")
+        .select("id, full_name, property_id")
+        .eq("id", id)
+        .single();
+      if (landlordError) throw new Error(landlordError.message);
+      propertyId = landlord.property_id;
+      payerName = landlord.full_name;
+      landlordId = landlord.id;
+      landlordName = landlord.full_name;
+    }
   }
 
   const { data: payment, error: paymentError } = await supabase
@@ -117,6 +127,7 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
       resident_name: residentName,
       landlord_id: landlordId,
       landlord_name: landlordName,
+      payer_name: payerNameManual,
       amount,
       period,
       covers_start: coversStart,
@@ -209,7 +220,7 @@ export async function updatePayment(paymentId: string, formData: FormData) {
     .eq("id", paymentId);
   if (updateError) throw new Error(updateError.message);
 
-  const payerName = payment.resident_name ?? payment.landlord_name ?? "Unknown payer";
+  const payerName = payment.resident_name ?? payment.landlord_name ?? payment.payer_name ?? "Unknown payer";
   const { error: incomeUpdateError } = await supabase
     .from("income_expenditure_entries")
     .update({

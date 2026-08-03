@@ -24,11 +24,13 @@ type Resident = {
 
 // Service Charge and 5% on Rented Property (a one-off, charged only when a
 // resident moves in) are billed to residents only, Development Levy to
-// landlords only; everything else (Toll, Donation, Others) can be paid by
-// either, so the form offers a toggle only in that case.
+// landlords only; Donation/Others can be paid by either, so the form offers
+// a toggle only in that case. Toll is the one exception to "pick from the
+// directory" - it's just a typed name, no resident/landlord lookup.
 const RESIDENT_ONLY_CATEGORIES = new Set(["Service Charge", "5% on Rented Property"]);
 const LANDLORD_ONLY = "Development Levy";
 const SERVICE_CHARGE = "Service Charge";
+const TOLL = "Toll";
 
 export function RecordPaymentForm({
   action,
@@ -56,6 +58,7 @@ export function RecordPaymentForm({
       : null;
   const isDevelopmentLevy = chargeCategory === LANDLORD_ONLY;
   const isServiceCharge = chargeCategory === SERVICE_CHARGE;
+  const isToll = chargeCategory === TOLL;
 
   const [payerType, setPayerType] = useState<"resident" | "landlord">(forcedPayerType ?? "resident");
   const [landlordId, setLandlordId] = useState("");
@@ -73,47 +76,55 @@ export function RecordPaymentForm({
       action={action}
       className="flex w-full flex-wrap items-center gap-2 border-t border-slate-200 pt-3 dark:border-slate-800"
     >
-      <input type="hidden" name="payer_type" value={payerType} />
-
-      {!forcedPayerType && (
-        <Select
-          value={payerType}
-          onChange={(e) => {
-            setPayerType(e.target.value as "resident" | "landlord");
-            setLandlordId("");
-          }}
-          className="w-28"
-        >
-          <option value="resident">Resident</option>
-          <option value="landlord">Landlord</option>
-        </Select>
-      )}
-
-      <Select value={landlordId} onChange={(e) => setLandlordId(e.target.value)} required className="w-56">
-        <option value="" disabled>
-          Select landlord
-        </option>
-        {landlords.map((landlord) => (
-          <option key={landlord.id} value={landlord.id}>
-            {landlord.full_name}
-            {landlord.properties ? ` — ${landlord.properties.house_number} ${landlord.properties.street_name}` : ""}
-          </option>
-        ))}
-      </Select>
-
-      {payerType === "resident" ? (
-        <Select key={landlordId} name="resident_id" required defaultValue="" className="w-56">
-          <option value="" disabled>
-            {landlordId ? "Select resident" : "Select a landlord first"}
-          </option>
-          {residentsForLandlord.map((resident) => (
-            <option key={resident.id} value={resident.id}>
-              {resident.full_name}
-            </option>
-          ))}
-        </Select>
+      {isToll ? (
+        <Input name="payer_name" placeholder="Payer name" required className="w-56" />
       ) : (
-        <input type="hidden" name="landlord_id" value={landlordId} />
+        <>
+          <input type="hidden" name="payer_type" value={payerType} />
+
+          {!forcedPayerType && (
+            <Select
+              value={payerType}
+              onChange={(e) => {
+                setPayerType(e.target.value as "resident" | "landlord");
+                setLandlordId("");
+              }}
+              className="w-28"
+            >
+              <option value="resident">Resident</option>
+              <option value="landlord">Landlord</option>
+            </Select>
+          )}
+
+          <Select value={landlordId} onChange={(e) => setLandlordId(e.target.value)} required className="w-56">
+            <option value="" disabled>
+              Select landlord
+            </option>
+            {landlords.map((landlord) => (
+              <option key={landlord.id} value={landlord.id}>
+                {landlord.full_name}
+                {landlord.properties
+                  ? ` — ${landlord.properties.house_number} ${landlord.properties.street_name}`
+                  : ""}
+              </option>
+            ))}
+          </Select>
+
+          {payerType === "resident" ? (
+            <Select key={landlordId} name="resident_id" required defaultValue="" className="w-56">
+              <option value="" disabled>
+                {landlordId ? "Select resident" : "Select a landlord first"}
+              </option>
+              {residentsForLandlord.map((resident) => (
+                <option key={resident.id} value={resident.id}>
+                  {resident.full_name}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <input type="hidden" name="landlord_id" value={landlordId} />
+          )}
+        </>
       )}
 
       {isDevelopmentLevy ? (

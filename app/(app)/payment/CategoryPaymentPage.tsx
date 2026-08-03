@@ -21,6 +21,7 @@ type PaymentRow = {
   reference: string | null;
   resident_name: string | null;
   landlord_name: string | null;
+  payer_name: string | null;
   period: string | null;
   covers_start: string | null;
   covers_end: string | null;
@@ -178,7 +179,7 @@ export async function CategoryPaymentPage({
       ? await supabase
           .from("payments")
           .select(
-            "id, amount, paid_at, method, reference, resident_name, landlord_name, period, covers_start, covers_end, plot_count, properties(street_name, house_number), service_charge_structures(name, charge_category, amount)"
+            "id, amount, paid_at, method, reference, resident_name, landlord_name, payer_name, period, covers_start, covers_end, plot_count, properties(street_name, house_number), service_charge_structures(name, charge_category, amount)"
           )
           .in("structure_id", structureIds)
           .order("paid_at", { ascending: false })
@@ -310,13 +311,15 @@ export async function CategoryPaymentPage({
             >
               <div>
                 <p className="font-medium text-slate-900 dark:text-slate-100">
-                  {payment.resident_name ?? payment.landlord_name ?? "Unknown payer"}
+                  {payment.resident_name ?? payment.landlord_name ?? payment.payer_name ?? "Unknown payer"}
                   {payment.landlord_name && !payment.resident_name ? " (landlord)" : ""}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {payment.properties
                     ? `${payment.properties.house_number} ${payment.properties.street_name}`
-                    : "Unknown property"}
+                    : payment.payer_name
+                      ? "—"
+                      : "Unknown property"}
                   {" · "}
                   {payment.service_charge_structures?.name ?? "—"} · {formatCurrency(payment.amount)}
                   {payment.plot_count ? ` · ${payment.plot_count} plot${payment.plot_count === 1 ? "" : "s"}` : ""}

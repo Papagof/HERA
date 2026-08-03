@@ -402,6 +402,7 @@ export type Database = {
           landlord_name: string | null
           method: string
           paid_at: string
+          payer_name: string | null
           payer_type: string | null
           period: string | null
           plot_count: number | null
@@ -420,6 +421,7 @@ export type Database = {
           landlord_name?: string | null
           method?: string
           paid_at?: string
+          payer_name?: string | null
           payer_type?: string | null
           period?: string | null
           plot_count?: number | null
@@ -438,6 +440,7 @@ export type Database = {
           landlord_name?: string | null
           method?: string
           paid_at?: string
+          payer_name?: string | null
           payer_type?: string | null
           period?: string | null
           plot_count?: number | null
