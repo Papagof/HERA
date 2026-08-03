@@ -2,8 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { MONTHS_COVERED } from "@/lib/billing-periods";
+import { CATEGORY_FREQUENCY, MONTHS_COVERED } from "@/lib/billing-periods";
 import { addMonths, monthToDate } from "@/lib/month";
+
+const SERVICE_CHARGE = "Service Charge";
+const DEVELOPMENT_LEVY = "Development Levy";
 
 function str(formData: FormData, key: string): string | null {
   const value = formData.get(key);
@@ -13,12 +16,17 @@ function str(formData: FormData, key: string): string | null {
 export async function createStructure(formData: FormData) {
   const supabase = await createClient();
 
+  const category = str(formData, "charge_category") ?? SERVICE_CHARGE;
+
   const { error } = await supabase.from("service_charge_structures").insert({
     name: str(formData, "name")!,
     amount: Number(str(formData, "amount")),
-    frequency: str(formData, "frequency") ?? "monthly",
-    applies_to_apartment_type: str(formData, "applies_to_apartment_type"),
-    charge_category: str(formData, "charge_category") ?? "Service Charge",
+    // Frequency is fixed per category, not a staff choice - see CATEGORY_FREQUENCY.
+    frequency: CATEGORY_FREQUENCY[category] ?? "monthly",
+    // Apartment type only makes sense for Service Charge (tied to the unit
+    // the resident occupies); other categories don't use it.
+    applies_to_apartment_type: category === SERVICE_CHARGE ? str(formData, "applies_to_apartment_type") : null,
+    charge_category: category,
   });
 
   if (error) throw new Error(error.message);
@@ -42,6 +50,13 @@ export async function deleteStructure(structureId: string) {
 // (already status='paid') and the payment together, both snapshotting the
 // payer's name/property so history reads correctly even after they leave.
 // Also logs the payment as income under the structure's own category.
+//
+// Each category has different fields because they're structurally different:
+// - Service Charge: month coverage (period + starting month), amount as typed.
+// - Development Levy: one-off, sized by plot_count at the structure's
+//   per-plot rate (amount = rate * plots), no month coverage.
+// - Toll/Donation/Others/5% on Rented Property: one-off, just an amount and
+//   the date paid, no month coverage.
 export async function recordDirectPayment(structureId: string, formData: FormData) {
   const supabase = await createClient();
   const {
@@ -49,21 +64,34 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
   } = await supabase.auth.getUser();
 
   const payerType = str(formData, "payer_type") === "landlord" ? "landlord" : "resident";
-  const period = str(formData, "period") ?? "monthly";
-  const amount = Number(str(formData, "amount"));
   const paidAt = str(formData, "paid_at") ?? new Date().toISOString().slice(0, 10);
-
-  const coversStartMonth = str(formData, "covers_start_month")!;
-  const coversEndMonth = addMonths(coversStartMonth, (MONTHS_COVERED[period] ?? 1) - 1);
-  const coversStart = monthToDate(coversStartMonth);
-  const coversEnd = monthToDate(coversEndMonth);
 
   const { data: structure, error: structureError } = await supabase
     .from("service_charge_structures")
-    .select("name, charge_category")
+    .select("name, charge_category, amount")
     .eq("id", structureId)
     .single();
   if (structureError) throw new Error(structureError.message);
+
+  let amount: number;
+  let plotCount: number | null = null;
+  let period: string | null = null;
+  let coversStart: string | null = null;
+  let coversEnd: string | null = null;
+
+  if (structure.charge_category === DEVELOPMENT_LEVY) {
+    plotCount = Number(str(formData, "plot_count"));
+    amount = structure.amount * plotCount;
+  } else if (structure.charge_category === SERVICE_CHARGE) {
+    amount = Number(str(formData, "amount"));
+    period = str(formData, "period") ?? "monthly";
+    const coversStartMonth = str(formData, "covers_start_month")!;
+    const coversEndMonth = addMonths(coversStartMonth, (MONTHS_COVERED[period] ?? 1) - 1);
+    coversStart = monthToDate(coversStartMonth);
+    coversEnd = monthToDate(coversEndMonth);
+  } else {
+    amount = Number(str(formData, "amount"));
+  }
 
   let propertyId: string;
   let payerName: string;
@@ -113,6 +141,7 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
       period,
       covers_start: coversStart,
       covers_end: coversEnd,
+      plot_count: plotCount,
       status: "paid",
     })
     .select("id")
@@ -131,6 +160,7 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
     period,
     covers_start: coversStart,
     covers_end: coversEnd,
+    plot_count: plotCount,
     paid_at: paidAt,
     method: str(formData, "method") ?? "bank_transfer",
     reference: str(formData, "reference"),
@@ -140,7 +170,7 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
   const { error: incomeError } = await supabase.from("income_expenditure_entries").insert({
     entry_type: "income",
     category: structure.charge_category,
-    description: `${structure.name} — ${payerName}`,
+    description: `${structure.name} — ${payerName}${plotCount ? ` (${plotCount} plot${plotCount === 1 ? "" : "s"})` : ""}`,
     amount,
     entry_date: paidAt,
     recorded_by: user?.id ?? null,

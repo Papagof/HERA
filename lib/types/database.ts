@@ -215,6 +215,7 @@ export type Database = {
           landlord_name: string | null
           payer_type: string | null
           period: string | null
+          plot_count: number | null
           property_id: string
           resident_id: string | null
           resident_name: string | null
@@ -232,6 +233,7 @@ export type Database = {
           landlord_name?: string | null
           payer_type?: string | null
           period?: string | null
+          plot_count?: number | null
           property_id: string
           resident_id?: string | null
           resident_name?: string | null
@@ -249,6 +251,7 @@ export type Database = {
           landlord_name?: string | null
           payer_type?: string | null
           period?: string | null
+          plot_count?: number | null
           property_id?: string
           resident_id?: string | null
           resident_name?: string | null
@@ -478,6 +481,7 @@ export type Database = {
           paid_at: string
           payer_type: string | null
           period: string | null
+          plot_count: number | null
           property_id: string | null
           reference: string | null
           resident_id: string | null
@@ -495,6 +499,7 @@ export type Database = {
           paid_at?: string
           payer_type?: string | null
           period?: string | null
+          plot_count?: number | null
           property_id?: string | null
           reference?: string | null
           resident_id?: string | null
@@ -512,6 +517,7 @@ export type Database = {
           paid_at?: string
           payer_type?: string | null
           period?: string | null
+          plot_count?: number | null
           property_id?: string | null
           reference?: string | null
           resident_id?: string | null

@@ -6,14 +6,12 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { labelClass } from "@/components/ui/fieldStyles";
 import { formatCurrency } from "@/lib/currency";
-import { APARTMENT_TYPES } from "@/lib/apartment-types";
 import { BILLING_PERIODS } from "@/lib/billing-periods";
-import { INCOME_CATEGORIES } from "@/lib/income-categories";
 import { currentMonth as getCurrentMonth, dateToMonth, formatMonthLabel, monthRange } from "@/lib/month";
 import { createStructure, deleteStructure, recordDirectPayment, recordPayment } from "./actions";
 import { RecordPaymentForm } from "./RecordPaymentForm";
+import { AddStructureForm } from "./AddStructureForm";
 
 const SERVICE_CHARGE = "Service Charge";
 
@@ -27,6 +25,7 @@ type InvoiceRow = {
   period: string | null;
   covers_start: string | null;
   covers_end: string | null;
+  plot_count: number | null;
   properties: { street_name: string; house_number: string } | null;
   service_charge_structures: { name: string; charge_category: string } | null;
 };
@@ -123,7 +122,9 @@ function StructureList({
           <div>
             <p className="font-medium text-slate-900 dark:text-slate-100">{structure.name}</p>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              {formatCurrency(structure.amount)} · {structure.frequency} · {structure.charge_category}
+              {formatCurrency(structure.amount)}
+              {structure.charge_category === "Development Levy" ? "/plot" : ""} · {structure.frequency} ·{" "}
+              {structure.charge_category}
               {structure.applies_to_apartment_type ? ` · ${structure.applies_to_apartment_type}` : ""}
             </p>
           </div>
@@ -168,7 +169,7 @@ export default async function ServiceChargesPage({
       supabase
         .from("invoices")
         .select(
-          "id, amount, due_date, status, resident_name, landlord_name, period, covers_start, covers_end, properties(street_name, house_number), service_charge_structures(name, charge_category)"
+          "id, amount, due_date, status, resident_name, landlord_name, period, covers_start, covers_end, plot_count, properties(street_name, house_number), service_charge_structures(name, charge_category)"
         )
         .order("due_date", { ascending: false }),
       supabase.from("residents").select("id, full_name, property_id").order("full_name"),
@@ -220,8 +221,9 @@ export default async function ServiceChargesPage({
       <Card>
         <h2 className="mb-1 text-lg font-medium text-slate-900 dark:text-slate-100">Other Charges</h2>
         <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-          Development Levy is billed to landlords only. Toll, 5% on Rented Property, Donation, and Others can be paid
-          by either a resident or a landlord.
+          Development Levy is billed to landlords only. 5% on Rented Property is billed to residents only (a
+          one-off, charged when a resident moves in). Toll, Donation, and Others can be paid by either a resident or
+          a landlord.
         </p>
         <StructureList
           list={otherStructures}
@@ -233,54 +235,7 @@ export default async function ServiceChargesPage({
       </Card>
 
       <Card>
-        <form
-          action={createStructure}
-          className="grid grid-cols-1 gap-3 sm:grid-cols-2"
-        >
-          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 sm:col-span-2">Add structure</p>
-          <div>
-            <label className={labelClass}>Name</label>
-            <Input name="name" required />
-          </div>
-          <div>
-            <label className={labelClass}>Amount</label>
-            <Input name="amount" type="number" step="0.01" required />
-          </div>
-          <div>
-            <label className={labelClass}>Category</label>
-            <Select name="charge_category" defaultValue={SERVICE_CHARGE}>
-              {INCOME_CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <label className={labelClass}>Frequency</label>
-            <Select name="frequency" defaultValue="monthly">
-              {BILLING_PERIODS.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <label className={labelClass}>Applies to apartment type (optional)</label>
-            <Select name="applies_to_apartment_type" defaultValue="">
-              <option value="">All apartment types</option>
-              {APARTMENT_TYPES.map((apartmentType) => (
-                <option key={apartmentType} value={apartmentType}>
-                  {apartmentType}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="sm:col-span-2">
-            <Button type="submit">Add structure</Button>
-          </div>
-        </form>
+        <AddStructureForm action={createStructure} />
       </Card>
 
       <Card>
@@ -375,6 +330,7 @@ export default async function ServiceChargesPage({
                     : "Unknown property"}
                   {" · "}
                   {invoice.service_charge_structures?.name ?? "—"} · {formatCurrency(invoice.amount)}
+                  {invoice.plot_count ? ` · ${invoice.plot_count} plot${invoice.plot_count === 1 ? "" : "s"}` : ""}
                   {invoice.covers_start && invoice.covers_end
                     ? ` · covers ${
                         dateToMonth(invoice.covers_start) === dateToMonth(invoice.covers_end)

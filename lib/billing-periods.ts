@@ -15,3 +15,16 @@ export const MONTHS_COVERED: Record<string, number> = {
   half_yearly: 6,
   yearly: 12,
 };
+
+// Each charge category has a fixed billing rhythm - not a staff choice:
+// Service Charge is always monthly, Development Levy is a one-off assessed
+// per plot, Toll is daily, and Donation/Others/5% on Rented Property are
+// ad hoc one-off entries with no recurring schedule.
+export const CATEGORY_FREQUENCY: Record<string, string> = {
+  "Service Charge": "monthly",
+  "Development Levy": "one_off",
+  Toll: "daily",
+  "5% on Rented Property": "one_off",
+  Donation: "one_off",
+  Others: "one_off",
+};

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
+import { formatCurrency } from "@/lib/currency";
 import { BILLING_PERIODS } from "@/lib/billing-periods";
 
 type PropertyLabel = { house_number: string; street_name: string } | null;
@@ -21,11 +22,13 @@ type Resident = {
   property_id: string;
 };
 
-// Service Charge is billed to residents only, Development Levy to landlords
-// only; everything else (Toll, 5% on Rented Property, Donation, Others) can
-// be paid by either, so the form offers a toggle only in that case.
-const RESIDENT_ONLY = "Service Charge";
+// Service Charge and 5% on Rented Property (a one-off, charged only when a
+// resident moves in) are billed to residents only, Development Levy to
+// landlords only; everything else (Toll, Donation, Others) can be paid by
+// either, so the form offers a toggle only in that case.
+const RESIDENT_ONLY_CATEGORIES = new Set(["Service Charge", "5% on Rented Property"]);
 const LANDLORD_ONLY = "Development Levy";
+const SERVICE_CHARGE = "Service Charge";
 
 export function RecordPaymentForm({
   action,
@@ -46,14 +49,24 @@ export function RecordPaymentForm({
   currentMonth: string;
   chargeCategory: string;
 }) {
-  const forcedPayerType =
-    chargeCategory === RESIDENT_ONLY ? "resident" : chargeCategory === LANDLORD_ONLY ? "landlord" : null;
+  const forcedPayerType = RESIDENT_ONLY_CATEGORIES.has(chargeCategory)
+    ? "resident"
+    : chargeCategory === LANDLORD_ONLY
+      ? "landlord"
+      : null;
+  const isDevelopmentLevy = chargeCategory === LANDLORD_ONLY;
+  const isServiceCharge = chargeCategory === SERVICE_CHARGE;
+
   const [payerType, setPayerType] = useState<"resident" | "landlord">(forcedPayerType ?? "resident");
   const [landlordId, setLandlordId] = useState("");
+  const [plotCount, setPlotCount] = useState("1");
   const selectedLandlord = landlords.find((l) => l.id === landlordId);
   const residentsForLandlord = selectedLandlord
     ? residents.filter((r) => r.property_id === selectedLandlord.property_id)
     : [];
+
+  const plotCountNumber = Number(plotCount) || 0;
+  const levyTotal = defaultAmount * plotCountNumber;
 
   return (
     <form
@@ -76,12 +89,7 @@ export function RecordPaymentForm({
         </Select>
       )}
 
-      <Select
-        value={landlordId}
-        onChange={(e) => setLandlordId(e.target.value)}
-        required
-        className="w-56"
-      >
+      <Select value={landlordId} onChange={(e) => setLandlordId(e.target.value)} required className="w-56">
         <option value="" disabled>
           Select landlord
         </option>
@@ -108,22 +116,47 @@ export function RecordPaymentForm({
         <input type="hidden" name="landlord_id" value={landlordId} />
       )}
 
-      <Select name="period" defaultValue={defaultPeriod} className="w-32">
-        {BILLING_PERIODS.map((p) => (
-          <option key={p.value} value={p.value}>
-            {p.label}
-          </option>
-        ))}
-      </Select>
-      <Input
-        name="covers_start_month"
-        type="month"
-        required
-        defaultValue={currentMonth}
-        title="Starting month this payment covers"
-        className="w-36"
-      />
-      <Input name="amount" type="number" step="0.01" defaultValue={defaultAmount} required className="w-28" />
+      {isDevelopmentLevy ? (
+        <>
+          <Input
+            name="plot_count"
+            type="number"
+            min="0.5"
+            step="0.5"
+            required
+            value={plotCount}
+            onChange={(e) => setPlotCount(e.target.value)}
+            title="Number of plots (minimum half a plot)"
+            className="w-24"
+          />
+          <span className="text-sm text-slate-500 dark:text-slate-400">
+            plots × {formatCurrency(defaultAmount)}/plot = <strong>{formatCurrency(levyTotal)}</strong>
+          </span>
+        </>
+      ) : (
+        <Input name="amount" type="number" step="0.01" defaultValue={defaultAmount} required className="w-28" />
+      )}
+
+      {isServiceCharge && (
+        <>
+          <Select name="period" defaultValue={defaultPeriod} className="w-32">
+            {BILLING_PERIODS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </Select>
+          <Input
+            name="covers_start_month"
+            type="month"
+            required
+            defaultValue={currentMonth}
+            title="Starting month this payment covers"
+            className="w-36"
+          />
+        </>
+      )}
+
       <Input type="date" name="paid_at" required defaultValue={today} className="w-40" />
       <Select name="method" defaultValue="bank_transfer" className="w-36">
         <option value="bank_transfer">Bank transfer</option>
