@@ -2,6 +2,8 @@
 // <input type="month"> produces) and the DATE columns (first-of-month) they
 // map to in the database.
 
+import { BILLING_PERIODS } from "./billing-periods";
+
 export function monthToDate(yyyyMm: string): string {
   return `${yyyyMm}-01`;
 }
@@ -36,4 +38,24 @@ export function currentMonth(): string {
 export function formatMonthLabel(yyyyMm: string): string {
   const [year, month] = yyyyMm.split("-").map(Number);
   return new Date(year, month - 1, 1).toLocaleString("en-US", { month: "short", year: "numeric" });
+}
+
+// A payment either covers an explicit month range (Service Charge), a named
+// period with no explicit range (legacy rows), or neither (a one-off charge).
+export function formatCoverageLabel(
+  coversStart: string | null,
+  coversEnd: string | null,
+  period: string | null
+): string | null {
+  if (coversStart && coversEnd) {
+    const startMonth = dateToMonth(coversStart);
+    const endMonth = dateToMonth(coversEnd);
+    return startMonth === endMonth
+      ? formatMonthLabel(startMonth)
+      : `${formatMonthLabel(startMonth)} – ${formatMonthLabel(endMonth)}`;
+  }
+  if (period) {
+    return BILLING_PERIODS.find((p) => p.value === period)?.label ?? period;
+  }
+  return null;
 }

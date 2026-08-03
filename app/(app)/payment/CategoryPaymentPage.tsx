@@ -6,7 +6,13 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { formatCurrency } from "@/lib/currency";
 import { BILLING_PERIODS } from "@/lib/billing-periods";
-import { currentMonth as getCurrentMonth, dateToMonth, formatMonthLabel, monthRange } from "@/lib/month";
+import {
+  currentMonth as getCurrentMonth,
+  dateToMonth,
+  formatCoverageLabel,
+  formatMonthLabel,
+  monthRange,
+} from "@/lib/month";
 import { deleteStructure, recordDirectPayment, updatePayment } from "./actions";
 import { RecordPaymentForm } from "./RecordPaymentForm";
 import { EditPaymentForm } from "./EditPaymentForm";
@@ -304,7 +310,10 @@ export async function CategoryPaymentPage({
       <Card>
         <h2 className="mb-4 text-lg font-medium text-slate-900 dark:text-slate-100">Payment History</h2>
         <div className="space-y-3">
-          {paymentRows.map((payment) => (
+          {paymentRows.map((payment) => {
+            const coverage = formatCoverageLabel(payment.covers_start, payment.covers_end, payment.period);
+            const coveragePrefix = payment.covers_start && payment.covers_end ? "covers " : "";
+            return (
             <div
               key={payment.id}
               className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-800"
@@ -323,15 +332,7 @@ export async function CategoryPaymentPage({
                   {" · "}
                   {payment.service_charge_structures?.name ?? "—"} · {formatCurrency(payment.amount)}
                   {payment.plot_count ? ` · ${payment.plot_count} plot${payment.plot_count === 1 ? "" : "s"}` : ""}
-                  {payment.covers_start && payment.covers_end
-                    ? ` · covers ${
-                        dateToMonth(payment.covers_start) === dateToMonth(payment.covers_end)
-                          ? formatMonthLabel(dateToMonth(payment.covers_start))
-                          : `${formatMonthLabel(dateToMonth(payment.covers_start))} – ${formatMonthLabel(dateToMonth(payment.covers_end))}`
-                      }`
-                    : payment.period
-                      ? ` · ${BILLING_PERIODS.find((p) => p.value === payment.period)?.label ?? payment.period}`
-                      : ""}
+                  {coverage ? ` · ${coveragePrefix}${coverage}` : ""}
                   {" · "}
                   {payment.service_charge_structures?.charge_category ?? ""} · paid {payment.paid_at.slice(0, 10)}
                 </p>
@@ -351,7 +352,8 @@ export async function CategoryPaymentPage({
                 />
               )}
             </div>
-          ))}
+            );
+          })}
           {paymentRows.length === 0 && (
             <p className="text-sm text-slate-500 dark:text-slate-400">No payments recorded yet.</p>
           )}
