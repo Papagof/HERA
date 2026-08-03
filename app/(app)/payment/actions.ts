@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
-import { CATEGORY_FREQUENCY, MONTHS_COVERED } from "@/lib/billing-periods";
+import { MONTHS_COVERED } from "@/lib/billing-periods";
 import { addMonths, monthToDate } from "@/lib/month";
 import { ALL_PAYMENT_PATHS } from "@/lib/payment-pages";
 
@@ -17,26 +17,6 @@ const DEVELOPMENT_LEVY = "Development Levy";
 function str(formData: FormData, key: string): string | null {
   const value = formData.get(key);
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
-}
-
-export async function createStructure(formData: FormData) {
-  const supabase = await createClient();
-
-  const category = str(formData, "charge_category") ?? SERVICE_CHARGE;
-
-  const { error } = await supabase.from("service_charge_structures").insert({
-    name: str(formData, "name")!,
-    amount: Number(str(formData, "amount")),
-    // Frequency is fixed per category, not a staff choice - see CATEGORY_FREQUENCY.
-    frequency: CATEGORY_FREQUENCY[category] ?? "monthly",
-    // Apartment type only makes sense for Service Charge (tied to the unit
-    // the resident occupies); other categories don't use it.
-    applies_to_apartment_type: category === SERVICE_CHARGE ? str(formData, "applies_to_apartment_type") : null,
-    charge_category: category,
-  });
-
-  if (error) throw new Error(error.message);
-  revalidateAllPaymentPages();
 }
 
 export async function deleteStructure(structureId: string) {

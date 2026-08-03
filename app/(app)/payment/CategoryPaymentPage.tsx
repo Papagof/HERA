@@ -7,9 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { formatCurrency } from "@/lib/currency";
 import { BILLING_PERIODS } from "@/lib/billing-periods";
 import { currentMonth as getCurrentMonth, dateToMonth, formatMonthLabel, monthRange } from "@/lib/month";
-import { createStructure, deleteStructure, recordDirectPayment, updatePayment } from "./actions";
+import { deleteStructure, recordDirectPayment, updatePayment } from "./actions";
 import { RecordPaymentForm } from "./RecordPaymentForm";
-import { AddStructureForm } from "./AddStructureForm";
 import { EditPaymentForm } from "./EditPaymentForm";
 
 const SERVICE_CHARGE = "Service Charge";
@@ -239,10 +238,6 @@ export async function CategoryPaymentPage({
             />
           </div>
         )}
-      </Card>
-
-      <Card>
-        <AddStructureForm action={createStructure} categories={categories} />
       </Card>
 
       {showCoverage && (
