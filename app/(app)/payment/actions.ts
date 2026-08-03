@@ -5,6 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { CATEGORY_FREQUENCY, MONTHS_COVERED } from "@/lib/billing-periods";
 import { addMonths, monthToDate } from "@/lib/month";
+import { ALL_PAYMENT_PATHS } from "@/lib/payment-pages";
+
+function revalidateAllPaymentPages() {
+  for (const path of ALL_PAYMENT_PATHS) revalidatePath(path);
+}
 
 const SERVICE_CHARGE = "Service Charge";
 const DEVELOPMENT_LEVY = "Development Levy";
@@ -31,7 +36,7 @@ export async function createStructure(formData: FormData) {
   });
 
   if (error) throw new Error(error.message);
-  revalidatePath("/service-charges");
+  revalidateAllPaymentPages();
 }
 
 export async function deleteStructure(structureId: string) {
@@ -41,7 +46,7 @@ export async function deleteStructure(structureId: string) {
     .delete()
     .eq("id", structureId);
   if (error) throw new Error(error.message);
-  revalidatePath("/service-charges");
+  revalidateAllPaymentPages();
 }
 
 // A payment is the only record - there is no separate invoice. Each category
@@ -156,7 +161,7 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
   });
   if (incomeError) throw new Error(incomeError.message);
 
-  revalidatePath("/service-charges");
+  revalidateAllPaymentPages();
   revalidatePath("/income-expenditure");
 }
 
@@ -235,6 +240,6 @@ export async function updatePayment(paymentId: string, formData: FormData) {
     .eq("payment_id", paymentId);
   if (incomeUpdateError) throw new Error(incomeUpdateError.message);
 
-  revalidatePath("/service-charges");
+  revalidateAllPaymentPages();
   revalidatePath("/income-expenditure");
 }

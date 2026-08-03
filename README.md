@@ -12,7 +12,7 @@ See [CLAUDE.md](CLAUDE.md) for the full project spec and [AGENTS.md](AGENTS.md) 
   - `app/(app)/` — authenticated shell, one folder per module:
     - `dashboard/` — overview cards (counts + financials for staff/accountant)
     - `directory/` — Resident & Landlord Directory
-    - `service-charges/` — charge structures, invoice generation, payments
+    - `payment/` — charge structures + payments, split into per-category pages (`service-charge`, `development-levy`, `toll`, `donation`, `others`) under a "Payment" navbar dropdown
     - `property-listings/` — staff-side listing management + inquiries received
     - `executives/` — Executive Committee Records
     - `income-expenditure/` — income/expenditure entries + running balance

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function ServiceChargesRedirect() {
+export default function PaymentIndexRedirect() {
   redirect("/payment/service-charge");
 }

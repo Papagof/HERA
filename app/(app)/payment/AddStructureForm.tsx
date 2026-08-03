@@ -6,7 +6,6 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { labelClass } from "@/components/ui/fieldStyles";
 import { APARTMENT_TYPES } from "@/lib/apartment-types";
-import { INCOME_CATEGORIES } from "@/lib/income-categories";
 import { CATEGORY_FREQUENCY } from "@/lib/billing-periods";
 
 const SERVICE_CHARGE = "Service Charge";
@@ -18,23 +17,33 @@ const FREQUENCY_LABEL: Record<string, string> = {
   one_off: "One-off",
 };
 
-export function AddStructureForm({ action }: { action: (formData: FormData) => void }) {
-  const [category, setCategory] = useState<string>(SERVICE_CHARGE);
+export function AddStructureForm({
+  action,
+  categories,
+}: {
+  action: (formData: FormData) => void;
+  categories: readonly string[];
+}) {
+  const [category, setCategory] = useState<string>(categories[0]);
   const frequency = CATEGORY_FREQUENCY[category] ?? "monthly";
 
   return (
     <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <p className="text-sm font-medium text-slate-700 dark:text-slate-300 sm:col-span-2">Add structure</p>
-      <div>
-        <label className={labelClass}>Category</label>
-        <Select name="charge_category" value={category} onChange={(e) => setCategory(e.target.value)}>
-          {INCOME_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </Select>
-      </div>
+      {categories.length > 1 ? (
+        <div>
+          <label className={labelClass}>Category</label>
+          <Select name="charge_category" value={category} onChange={(e) => setCategory(e.target.value)}>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </Select>
+        </div>
+      ) : (
+        <input type="hidden" name="charge_category" value={categories[0]} />
+      )}
       <div>
         <label className={labelClass}>Name</label>
         <Input name="name" required />
