@@ -12,7 +12,6 @@ const AUDITED_TABLES = [
   "landlords",
   "residents",
   "service_charge_structures",
-  "invoices",
   "payments",
   "property_listings",
   "executives",

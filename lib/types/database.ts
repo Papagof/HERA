@@ -168,6 +168,7 @@ export type Database = {
           entry_date: string
           entry_type: string
           id: string
+          payment_id: string | null
           receipt_url: string | null
           recorded_by: string | null
         }
@@ -179,6 +180,7 @@ export type Database = {
           entry_date?: string
           entry_type: string
           id?: string
+          payment_id?: string | null
           receipt_url?: string | null
           recorded_by?: string | null
         }
@@ -190,101 +192,23 @@ export type Database = {
           entry_date?: string
           entry_type?: string
           id?: string
+          payment_id?: string | null
           receipt_url?: string | null
           recorded_by?: string | null
         }
         Relationships: [
           {
+            foreignKeyName: "income_expenditure_entries_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "income_expenditure_entries_recorded_by_fkey"
             columns: ["recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      invoices: {
-        Row: {
-          amount: number
-          covers_end: string | null
-          covers_start: string | null
-          created_at: string
-          due_date: string
-          id: string
-          landlord_id: string | null
-          landlord_name: string | null
-          payer_type: string | null
-          period: string | null
-          plot_count: number | null
-          property_id: string
-          resident_id: string | null
-          resident_name: string | null
-          status: string
-          structure_id: string | null
-        }
-        Insert: {
-          amount: number
-          covers_end?: string | null
-          covers_start?: string | null
-          created_at?: string
-          due_date: string
-          id?: string
-          landlord_id?: string | null
-          landlord_name?: string | null
-          payer_type?: string | null
-          period?: string | null
-          plot_count?: number | null
-          property_id: string
-          resident_id?: string | null
-          resident_name?: string | null
-          status?: string
-          structure_id?: string | null
-        }
-        Update: {
-          amount?: number
-          covers_end?: string | null
-          covers_start?: string | null
-          created_at?: string
-          due_date?: string
-          id?: string
-          landlord_id?: string | null
-          landlord_name?: string | null
-          payer_type?: string | null
-          period?: string | null
-          plot_count?: number | null
-          property_id?: string
-          resident_id?: string | null
-          resident_name?: string | null
-          status?: string
-          structure_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "invoices_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "invoices_landlord_id_fkey"
-            columns: ["landlord_id"]
-            isOneToOne: false
-            referencedRelation: "landlords"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "invoices_resident_id_fkey"
-            columns: ["resident_id"]
-            isOneToOne: false
-            referencedRelation: "residents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "invoices_structure_id_fkey"
-            columns: ["structure_id"]
-            isOneToOne: false
-            referencedRelation: "service_charge_structures"
             referencedColumns: ["id"]
           },
         ]
@@ -474,7 +398,6 @@ export type Database = {
           covers_end: string | null
           covers_start: string | null
           id: string
-          invoice_id: string | null
           landlord_id: string | null
           landlord_name: string | null
           method: string
@@ -486,13 +409,13 @@ export type Database = {
           reference: string | null
           resident_id: string | null
           resident_name: string | null
+          structure_id: string | null
         }
         Insert: {
           amount: number
           covers_end?: string | null
           covers_start?: string | null
           id?: string
-          invoice_id?: string | null
           landlord_id?: string | null
           landlord_name?: string | null
           method?: string
@@ -504,13 +427,13 @@ export type Database = {
           reference?: string | null
           resident_id?: string | null
           resident_name?: string | null
+          structure_id?: string | null
         }
         Update: {
           amount?: number
           covers_end?: string | null
           covers_start?: string | null
           id?: string
-          invoice_id?: string | null
           landlord_id?: string | null
           landlord_name?: string | null
           method?: string
@@ -522,13 +445,14 @@ export type Database = {
           reference?: string | null
           resident_id?: string | null
           resident_name?: string | null
+          structure_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "payments_invoice_id_fkey"
-            columns: ["invoice_id"]
+            foreignKeyName: "payments_landlord_id_fkey"
+            columns: ["landlord_id"]
             isOneToOne: false
-            referencedRelation: "invoices"
+            referencedRelation: "landlords"
             referencedColumns: ["id"]
           },
           {
@@ -539,17 +463,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "payments_landlord_id_fkey"
-            columns: ["landlord_id"]
-            isOneToOne: false
-            referencedRelation: "landlords"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "payments_resident_id_fkey"
             columns: ["resident_id"]
             isOneToOne: false
             referencedRelation: "residents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_structure_id_fkey"
+            columns: ["structure_id"]
+            isOneToOne: false
+            referencedRelation: "service_charge_structures"
             referencedColumns: ["id"]
           },
         ]

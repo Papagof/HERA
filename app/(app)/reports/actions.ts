@@ -21,14 +21,8 @@ export async function generateReport(formData: FormData) {
   const { start, end } = monthRange(reportMonth);
   const nextMonthDate = end.slice(0, 10);
 
-  const [{ data: payments }, { data: unpaidInvoices }, { data: entries }] = await Promise.all([
+  const [{ data: payments }, { data: entries }] = await Promise.all([
     supabase.from("payments").select("amount").gte("paid_at", start).lt("paid_at", end),
-    supabase
-      .from("invoices")
-      .select("id, amount")
-      .neq("status", "paid")
-      .gte("due_date", reportMonth)
-      .lt("due_date", nextMonthDate),
     supabase
       .from("income_expenditure_entries")
       .select("entry_type, amount")
@@ -37,24 +31,9 @@ export async function generateReport(formData: FormData) {
   ]);
 
   const totalCollected = (payments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
-
-  // Outstanding must net out any partial payments already made against these
-  // invoices, matching the dashboard's calculation - not just the invoices'
-  // original face amount.
-  const invoiceIds = (unpaidInvoices ?? []).map((i) => i.id);
-  const { data: paymentsAgainstUnpaid } =
-    invoiceIds.length > 0
-      ? await supabase.from("payments").select("invoice_id, amount").in("invoice_id", invoiceIds)
-      : { data: [] as { invoice_id: string | null; amount: number }[] };
-  const paidByInvoice = new Map<string, number>();
-  for (const payment of paymentsAgainstUnpaid ?? []) {
-    if (!payment.invoice_id) continue;
-    paidByInvoice.set(payment.invoice_id, (paidByInvoice.get(payment.invoice_id) ?? 0) + Number(payment.amount));
-  }
-  const totalOutstanding = (unpaidInvoices ?? []).reduce(
-    (sum, invoice) => sum + Math.max(0, Number(invoice.amount) - (paidByInvoice.get(invoice.id) ?? 0)),
-    0
-  );
+  // No more "unpaid" concept now that payments are recorded directly with no
+  // invoice step - every payment is already collected the moment it exists.
+  const totalOutstanding = 0;
   const totalIncome = (entries ?? [])
     .filter((e) => e.entry_type === "income")
     .reduce((sum, e) => sum + Number(e.amount), 0);

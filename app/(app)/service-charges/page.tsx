@@ -2,24 +2,24 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, isStaff } from "@/lib/auth";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
 import { formatCurrency } from "@/lib/currency";
 import { BILLING_PERIODS } from "@/lib/billing-periods";
 import { currentMonth as getCurrentMonth, dateToMonth, formatMonthLabel, monthRange } from "@/lib/month";
-import { createStructure, deleteStructure, recordDirectPayment, recordPayment } from "./actions";
+import { createStructure, deleteStructure, recordDirectPayment, updatePayment } from "./actions";
 import { RecordPaymentForm } from "./RecordPaymentForm";
 import { AddStructureForm } from "./AddStructureForm";
+import { EditPaymentForm } from "./EditPaymentForm";
 
 const SERVICE_CHARGE = "Service Charge";
 
-type InvoiceRow = {
+type PaymentRow = {
   id: string;
   amount: number;
-  due_date: string;
-  status: string;
+  paid_at: string;
+  method: string;
+  reference: string | null;
   resident_name: string | null;
   landlord_name: string | null;
   period: string | null;
@@ -27,7 +27,7 @@ type InvoiceRow = {
   covers_end: string | null;
   plot_count: number | null;
   properties: { street_name: string; house_number: string } | null;
-  service_charge_structures: { name: string; charge_category: string } | null;
+  service_charge_structures: { name: string; charge_category: string; amount: number } | null;
 };
 
 type StructureRow = {
@@ -92,13 +92,6 @@ function computeCoverageByStructure(rows: CoverageRow[], nowMonth: string): Stru
   return result;
 }
 
-const STATUS_TONE: Record<string, "green" | "amber" | "red" | "slate"> = {
-  paid: "green",
-  partial: "amber",
-  overdue: "red",
-  unpaid: "slate",
-};
-
 function StructureList({
   list,
   landlords,
@@ -154,24 +147,24 @@ function StructureList({
 export default async function ServiceChargesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; payer?: string }>;
+  searchParams: Promise<{ payer?: string }>;
 }) {
   const profile = await requireProfile();
   if (!isStaff(profile.role) && profile.role !== "accountant") redirect("/dashboard");
 
   const supabase = await createClient();
-  const { status, payer } = await searchParams;
+  const { payer } = await searchParams;
   const [payerType, payerId] = payer ? payer.split(":") : [null, null];
 
-  const [{ data: structures }, { data: invoices }, { data: residentsForPayment }, { data: landlordsForPayment }] =
+  const [{ data: structures }, { data: payments }, { data: residentsForPayment }, { data: landlordsForPayment }] =
     await Promise.all([
       supabase.from("service_charge_structures").select("*").order("name"),
       supabase
-        .from("invoices")
+        .from("payments")
         .select(
-          "id, amount, due_date, status, resident_name, landlord_name, period, covers_start, covers_end, plot_count, properties(street_name, house_number), service_charge_structures(name, charge_category)"
+          "id, amount, paid_at, method, reference, resident_name, landlord_name, period, covers_start, covers_end, plot_count, properties(street_name, house_number), service_charge_structures(name, charge_category, amount)"
         )
-        .order("due_date", { ascending: false }),
+        .order("paid_at", { ascending: false }),
       supabase.from("residents").select("id, full_name, property_id").order("full_name"),
       supabase
         .from("landlords")
@@ -179,9 +172,7 @@ export default async function ServiceChargesPage({
         .order("full_name"),
     ]);
 
-  const filteredInvoices = ((invoices ?? []) as unknown as InvoiceRow[]).filter(
-    (invoice) => !status || invoice.status === status
-  );
+  const paymentRows = (payments ?? []) as unknown as PaymentRow[];
 
   const today = new Date().toISOString().slice(0, 10);
   const nowMonth = getCurrentMonth();
@@ -193,7 +184,7 @@ export default async function ServiceChargesPage({
   if (payerType && payerId) {
     const column = payerType === "landlord" ? "landlord_id" : "resident_id";
     const { data: coverageRows } = await supabase
-      .from("invoices")
+      .from("payments")
       .select("covers_start, covers_end, service_charge_structures(name)")
       .eq(column, payerId)
       .not("covers_start", "is", null)
@@ -297,75 +288,56 @@ export default async function ServiceChargesPage({
       </Card>
 
       <Card>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-slate-900 dark:text-slate-100">Invoices</h2>
-          <form className="flex items-center gap-2">
-            <Select name="status" defaultValue={status ?? ""}>
-              <option value="">All statuses</option>
-              <option value="unpaid">Unpaid</option>
-              <option value="partial">Partial</option>
-              <option value="paid">Paid</option>
-              <option value="overdue">Overdue</option>
-            </Select>
-            <Button type="submit" variant="secondary">
-              Filter
-            </Button>
-          </form>
-        </div>
-
+        <h2 className="mb-4 text-lg font-medium text-slate-900 dark:text-slate-100">Payment History</h2>
         <div className="space-y-3">
-          {filteredInvoices.map((invoice) => (
+          {paymentRows.map((payment) => (
             <div
-              key={invoice.id}
+              key={payment.id}
               className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-800"
             >
               <div>
                 <p className="font-medium text-slate-900 dark:text-slate-100">
-                  {invoice.resident_name ?? invoice.landlord_name ?? "Unknown payer"}
-                  {invoice.landlord_name && !invoice.resident_name ? " (landlord)" : ""}
+                  {payment.resident_name ?? payment.landlord_name ?? "Unknown payer"}
+                  {payment.landlord_name && !payment.resident_name ? " (landlord)" : ""}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {invoice.properties
-                    ? `${invoice.properties.house_number} ${invoice.properties.street_name}`
+                  {payment.properties
+                    ? `${payment.properties.house_number} ${payment.properties.street_name}`
                     : "Unknown property"}
                   {" · "}
-                  {invoice.service_charge_structures?.name ?? "—"} · {formatCurrency(invoice.amount)}
-                  {invoice.plot_count ? ` · ${invoice.plot_count} plot${invoice.plot_count === 1 ? "" : "s"}` : ""}
-                  {invoice.covers_start && invoice.covers_end
+                  {payment.service_charge_structures?.name ?? "—"} · {formatCurrency(payment.amount)}
+                  {payment.plot_count ? ` · ${payment.plot_count} plot${payment.plot_count === 1 ? "" : "s"}` : ""}
+                  {payment.covers_start && payment.covers_end
                     ? ` · covers ${
-                        dateToMonth(invoice.covers_start) === dateToMonth(invoice.covers_end)
-                          ? formatMonthLabel(dateToMonth(invoice.covers_start))
-                          : `${formatMonthLabel(dateToMonth(invoice.covers_start))} – ${formatMonthLabel(dateToMonth(invoice.covers_end))}`
+                        dateToMonth(payment.covers_start) === dateToMonth(payment.covers_end)
+                          ? formatMonthLabel(dateToMonth(payment.covers_start))
+                          : `${formatMonthLabel(dateToMonth(payment.covers_start))} – ${formatMonthLabel(dateToMonth(payment.covers_end))}`
                       }`
-                    : invoice.period
-                      ? ` · ${BILLING_PERIODS.find((p) => p.value === invoice.period)?.label ?? invoice.period}`
+                    : payment.period
+                      ? ` · ${BILLING_PERIODS.find((p) => p.value === payment.period)?.label ?? payment.period}`
                       : ""}
                   {" · "}
-                  {invoice.status === "paid" ? "paid" : "due"} {invoice.due_date}
+                  {payment.service_charge_structures?.charge_category ?? ""} · paid {payment.paid_at.slice(0, 10)}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <Badge tone={STATUS_TONE[invoice.status] ?? "slate"}>{invoice.status}</Badge>
-                {invoice.status !== "paid" && (
-                  <form action={recordPayment.bind(null, invoice.id)} className="flex items-center gap-2">
-                    <Input name="amount" type="number" step="0.01" placeholder="Amount" required className="w-28" />
-                    <Select name="method" defaultValue="bank_transfer" className="w-36">
-                      <option value="bank_transfer">Bank transfer</option>
-                      <option value="cash">Cash</option>
-                      <option value="card">Card</option>
-                      <option value="mobile_money">Mobile money</option>
-                    </Select>
-                    <Input name="reference" placeholder="Reference" className="w-32" />
-                    <Button type="submit" variant="secondary">
-                      Record payment
-                    </Button>
-                  </form>
-                )}
-              </div>
+              {profile.role === "super_admin" && (
+                <EditPaymentForm
+                  action={updatePayment.bind(null, payment.id)}
+                  chargeCategory={payment.service_charge_structures?.charge_category ?? ""}
+                  rate={payment.service_charge_structures?.amount ?? 0}
+                  currentAmount={payment.amount}
+                  currentPlotCount={payment.plot_count}
+                  currentPeriod={payment.period}
+                  currentCoversStartMonth={payment.covers_start ? dateToMonth(payment.covers_start) : null}
+                  currentPaidAt={payment.paid_at.slice(0, 10)}
+                  currentMethod={payment.method}
+                  currentReference={payment.reference}
+                />
+              )}
             </div>
           ))}
-          {filteredInvoices.length === 0 && (
-            <p className="text-sm text-slate-500 dark:text-slate-400">No invoices match this filter.</p>
+          {paymentRows.length === 0 && (
+            <p className="text-sm text-slate-500 dark:text-slate-400">No payments recorded yet.</p>
           )}
         </div>
       </Card>

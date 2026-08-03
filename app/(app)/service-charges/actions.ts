@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireProfile } from "@/lib/auth";
 import { CATEGORY_FREQUENCY, MONTHS_COVERED } from "@/lib/billing-periods";
 import { addMonths, monthToDate } from "@/lib/month";
 
@@ -43,20 +44,15 @@ export async function deleteStructure(structureId: string) {
   revalidatePath("/service-charges");
 }
 
-// Payment is recorded directly for a payer (a resident or a landlord,
-// depending on the structure's charge_category - Service Charge is
-// resident-only, Development Levy is landlord-only, everything else can be
-// either) - no separate "generate invoice" step first. Creates the invoice
-// (already status='paid') and the payment together, both snapshotting the
-// payer's name/property so history reads correctly even after they leave.
-// Also logs the payment as income under the structure's own category.
-//
-// Each category has different fields because they're structurally different:
+// A payment is the only record - there is no separate invoice. Each category
+// has different fields because they're structurally different:
 // - Service Charge: month coverage (period + starting month), amount as typed.
 // - Development Levy: one-off, sized by plot_count at the structure's
 //   per-plot rate (amount = rate * plots), no month coverage.
 // - Toll/Donation/Others/5% on Rented Property: one-off, just an amount and
 //   the date paid, no month coverage.
+// Also logs the payment as income under the structure's own category, linked
+// back via payment_id so a later correction can update both together.
 export async function recordDirectPayment(structureId: string, formData: FormData) {
   const supabase = await createClient();
   const {
@@ -126,45 +122,27 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
     landlordName = landlord.full_name;
   }
 
-  const { data: invoice, error: invoiceError } = await supabase
-    .from("invoices")
+  const { data: payment, error: paymentError } = await supabase
+    .from("payments")
     .insert({
       property_id: propertyId,
+      structure_id: structureId,
       payer_type: payerType,
       resident_id: residentId,
       resident_name: residentName,
       landlord_id: landlordId,
       landlord_name: landlordName,
-      structure_id: structureId,
       amount,
-      due_date: paidAt,
       period,
       covers_start: coversStart,
       covers_end: coversEnd,
       plot_count: plotCount,
-      status: "paid",
+      paid_at: paidAt,
+      method: str(formData, "method") ?? "bank_transfer",
+      reference: str(formData, "reference"),
     })
     .select("id")
     .single();
-  if (invoiceError) throw new Error(invoiceError.message);
-
-  const { error: paymentError } = await supabase.from("payments").insert({
-    invoice_id: invoice.id,
-    property_id: propertyId,
-    payer_type: payerType,
-    resident_id: residentId,
-    resident_name: residentName,
-    landlord_id: landlordId,
-    landlord_name: landlordName,
-    amount,
-    period,
-    covers_start: coversStart,
-    covers_end: coversEnd,
-    plot_count: plotCount,
-    paid_at: paidAt,
-    method: str(formData, "method") ?? "bank_transfer",
-    reference: str(formData, "reference"),
-  });
   if (paymentError) throw new Error(paymentError.message);
 
   const { error: incomeError } = await supabase.from("income_expenditure_entries").insert({
@@ -174,6 +152,7 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
     amount,
     entry_date: paidAt,
     recorded_by: user?.id ?? null,
+    payment_id: payment.id,
   });
   if (incomeError) throw new Error(incomeError.message);
 
@@ -181,77 +160,80 @@ export async function recordDirectPayment(structureId: string, formData: FormDat
   revalidatePath("/income-expenditure");
 }
 
-// Legacy path for invoices generated before payments went direct - still
-// needed so any invoice left unpaid/partial under the old workflow can be
-// settled. Each payment increment is logged as income too, same as
-// recordDirectPayment, so partial payments over time each show up when made
-// rather than all at once when the invoice finally reaches "paid".
-export async function recordPayment(invoiceId: string, formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: invoice, error: invoiceError } = await supabase
-    .from("invoices")
-    .select("*, service_charge_structures(name, charge_category)")
-    .eq("id", invoiceId)
-    .single();
-  if (invoiceError) throw new Error(invoiceError.message);
-
-  // Guards against double-submission (e.g. a double-click before the UI
-  // re-renders and hides this form) recording the same payment twice.
-  if (invoice.status === "paid") {
-    throw new Error("This invoice is already fully paid.");
+// Corrections are super_admin only - re-checked here in addition to the RLS
+// policy (payments_update_super_admin), since a mistaken amount/date on a
+// payment that's already "paid" would otherwise need a raw SQL fix.
+export async function updatePayment(paymentId: string, formData: FormData) {
+  const profile = await requireProfile();
+  if (profile.role !== "super_admin") {
+    throw new Error("Only super_admin can correct a payment.");
   }
 
-  const amount = Number(str(formData, "amount"));
-  const paidAt = new Date().toISOString().slice(0, 10);
+  const supabase = await createClient();
 
-  const { error: paymentError } = await supabase.from("payments").insert({
-    invoice_id: invoiceId,
-    property_id: invoice.property_id,
-    payer_type: invoice.payer_type,
-    resident_id: invoice.resident_id,
-    resident_name: invoice.resident_name,
-    landlord_id: invoice.landlord_id,
-    landlord_name: invoice.landlord_name,
-    amount,
-    period: invoice.period,
-    paid_at: paidAt,
-    method: str(formData, "method") ?? "bank_transfer",
-    reference: str(formData, "reference"),
-  });
-  if (paymentError) throw new Error(paymentError.message);
-
-  const { data: payments, error: paymentsError } = await supabase
+  const { data: payment, error: paymentFetchError } = await supabase
     .from("payments")
-    .select("amount")
-    .eq("invoice_id", invoiceId);
-  if (paymentsError) throw new Error(paymentsError.message);
+    .select("*, service_charge_structures(name, charge_category, amount)")
+    .eq("id", paymentId)
+    .single();
+  if (paymentFetchError) throw new Error(paymentFetchError.message);
 
-  const totalPaid = (payments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
-  const status = totalPaid >= Number(invoice.amount) ? "paid" : totalPaid > 0 ? "partial" : "unpaid";
+  const structure = (
+    payment as unknown as {
+      service_charge_structures: { name: string; charge_category: string; amount: number } | null;
+    }
+  ).service_charge_structures;
+  const category = structure?.charge_category ?? SERVICE_CHARGE;
+
+  const paidAt = str(formData, "paid_at") ?? payment.paid_at.slice(0, 10);
+
+  let amount: number;
+  let plotCount: number | null = payment.plot_count;
+  let period: string | null = payment.period;
+  let coversStart: string | null = payment.covers_start;
+  let coversEnd: string | null = payment.covers_end;
+
+  if (category === DEVELOPMENT_LEVY) {
+    plotCount = Number(str(formData, "plot_count"));
+    amount = (structure?.amount ?? 0) * plotCount;
+  } else if (category === SERVICE_CHARGE) {
+    amount = Number(str(formData, "amount"));
+    period = str(formData, "period") ?? payment.period;
+    const coversStartMonth = str(formData, "covers_start_month");
+    if (coversStartMonth) {
+      const coversEndMonth = addMonths(coversStartMonth, (MONTHS_COVERED[period ?? "monthly"] ?? 1) - 1);
+      coversStart = monthToDate(coversStartMonth);
+      coversEnd = monthToDate(coversEndMonth);
+    }
+  } else {
+    amount = Number(str(formData, "amount"));
+  }
 
   const { error: updateError } = await supabase
-    .from("invoices")
-    .update({ status })
-    .eq("id", invoiceId);
+    .from("payments")
+    .update({
+      amount,
+      plot_count: plotCount,
+      period,
+      covers_start: coversStart,
+      covers_end: coversEnd,
+      paid_at: paidAt,
+      method: str(formData, "method") ?? payment.method,
+      reference: str(formData, "reference"),
+    })
+    .eq("id", paymentId);
   if (updateError) throw new Error(updateError.message);
 
-  const structureInfo = (
-    invoice as { service_charge_structures: { name: string; charge_category: string } | null }
-  ).service_charge_structures;
-  const payerName = invoice.resident_name ?? invoice.landlord_name ?? "Unknown payer";
-  const { error: incomeError } = await supabase.from("income_expenditure_entries").insert({
-    entry_type: "income",
-    category: structureInfo?.charge_category ?? "Service Charge",
-    description: `${structureInfo?.name ?? "Service charge"} — ${payerName}`,
-    amount,
-    entry_date: paidAt,
-    recorded_by: user?.id ?? null,
-  });
-  if (incomeError) throw new Error(incomeError.message);
+  const payerName = payment.resident_name ?? payment.landlord_name ?? "Unknown payer";
+  const { error: incomeUpdateError } = await supabase
+    .from("income_expenditure_entries")
+    .update({
+      amount,
+      entry_date: paidAt,
+      description: `${structure?.name ?? "Payment"} — ${payerName}${plotCount ? ` (${plotCount} plot${plotCount === 1 ? "" : "s"})` : ""}`,
+    })
+    .eq("payment_id", paymentId);
+  if (incomeUpdateError) throw new Error(incomeUpdateError.message);
 
   revalidatePath("/service-charges");
   revalidatePath("/income-expenditure");

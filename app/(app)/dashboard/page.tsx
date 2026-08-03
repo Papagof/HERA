@@ -29,31 +29,9 @@ export default async function DashboardPage() {
   const residentCount = publicStats?.resident_count ?? 0;
   const landlordCount = publicStats?.landlord_count ?? 0;
 
-  let outstanding = 0;
   let balance = 0;
 
   if (canSeeFinancials) {
-    const { data: unpaidInvoices } = await supabase
-      .from("invoices")
-      .select("id, amount")
-      .neq("status", "paid");
-
-    const invoiceIds = (unpaidInvoices ?? []).map((i) => i.id);
-    const { data: paymentsAgainstUnpaid } =
-      invoiceIds.length > 0
-        ? await supabase.from("payments").select("invoice_id, amount").in("invoice_id", invoiceIds)
-        : { data: [] as { invoice_id: string | null; amount: number }[] };
-
-    const paidByInvoice = new Map<string, number>();
-    for (const payment of paymentsAgainstUnpaid ?? []) {
-      if (!payment.invoice_id) continue;
-      paidByInvoice.set(payment.invoice_id, (paidByInvoice.get(payment.invoice_id) ?? 0) + Number(payment.amount));
-    }
-    outstanding = (unpaidInvoices ?? []).reduce(
-      (sum, invoice) => sum + Math.max(0, Number(invoice.amount) - (paidByInvoice.get(invoice.id) ?? 0)),
-      0
-    );
-
     const { data: entries } = await supabase.from("income_expenditure_entries").select("entry_type, amount");
     const totalIncome = (entries ?? [])
       .filter((e) => e.entry_type === "income")
@@ -76,12 +54,7 @@ export default async function DashboardPage() {
         <StatCard label="Residents" value={residentCount} />
         <StatCard label="Properties" value={propertyCount ?? 0} />
         <StatCard label="Landlords" value={landlordCount} />
-        {canSeeFinancials && (
-          <>
-            <StatCard label="Outstanding payments" value={formatCurrency(outstanding)} />
-            <StatCard label="Current balance" value={formatCurrency(balance)} />
-          </>
-        )}
+        {canSeeFinancials && <StatCard label="Current balance" value={formatCurrency(balance)} />}
       </div>
     </div>
   );
