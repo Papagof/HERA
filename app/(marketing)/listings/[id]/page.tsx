@@ -8,6 +8,7 @@ import { Button, buttonClasses } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { labelClass } from "@/components/ui/fieldStyles";
 import { formatCurrency } from "@/lib/currency";
+import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { submitInquiry } from "../actions";
 
 export default async function PublicListingDetailPage({
@@ -30,13 +31,44 @@ export default async function PublicListingDetailPage({
 
   if (!listing) notFound();
 
+  const property = listing.properties as { street_name: string; house_number: string; block: string | null } | null;
+  const propertyLabel = property
+    ? `${property.house_number} ${property.street_name}${property.block ? `, Block ${property.block}` : ""}`
+    : "your listing";
+  const contactPhone = listing.contact_phone;
+  const listingType = listing.listing_type;
+
+  // The inquiry is still saved for the staff-facing count on the Property
+  // Listings page, but there's no email/SMS notification system yet - the
+  // one way this actually reaches the contact person right away is handing
+  // it straight to them on WhatsApp, so redirect there when a number is on
+  // file instead of just showing a "we'll be in touch" confirmation.
   async function sendInquiry(formData: FormData) {
     "use server";
     await submitInquiry(id, formData);
+
+    if (contactPhone) {
+      const name = String(formData.get("name") ?? "").trim();
+      const email = String(formData.get("email") ?? "").trim();
+      const phone = String(formData.get("phone") ?? "").trim();
+      const message = String(formData.get("message") ?? "").trim();
+
+      const whatsappMessage = [
+        `Hi, I'm interested in ${propertyLabel} (${listingType === "rent" ? "for rent" : "for sale"}).`,
+        "",
+        `Name: ${name}`,
+        `Email: ${email}`,
+        phone ? `Phone: ${phone}` : null,
+        message ? `Message: ${message}` : null,
+      ]
+        .filter((line): line is string => line !== null)
+        .join("\n");
+
+      redirect(buildWhatsAppLink(contactPhone, whatsappMessage));
+    }
+
     redirect(`/listings/${id}?sent=1`);
   }
-
-  const property = listing.properties as { street_name: string; house_number: string; block: string | null } | null;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
