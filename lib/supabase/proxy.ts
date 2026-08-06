@@ -2,18 +2,18 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Only relevant while logged out; a signed-in user is bounced to /dashboard.
-const AUTH_PATHS = ["/login"];
+const AUTH_PATHS = ["/login", "/forgot-password"];
 
 // Always public, whether or not the visitor is signed in (marketing/listings
-// pages, plus their inquiry-form submissions). /invite must be public too:
-// an invite/recovery link lands here with the session token only in the URL
-// hash fragment, which the server never sees - if this redirected to /login
-// before the browser JS ran, the token would be lost.
+// pages, plus their inquiry-form submissions). /invite and /reset-password
+// must be public too: an invite/recovery link lands here with the session
+// token only in the URL hash fragment, which the server never sees - if this
+// redirected to /login before the browser JS ran, the token would be lost.
 //
 // "/" is matched via the same `pathname === prefix || pathname.startsWith(`${prefix}/`)`
 // check below - for prefix "/" that's `pathname === "/" || pathname.startsWith("//")`,
 // which only ever matches the root path itself, not every route.
-const PUBLIC_PATH_PREFIXES = ["/", "/listings", "/invite", "/about", "/contact"];
+const PUBLIC_PATH_PREFIXES = ["/", "/listings", "/invite", "/reset-password", "/about", "/contact"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
